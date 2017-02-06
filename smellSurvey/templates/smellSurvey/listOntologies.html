@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block css %}
+<!--<link rel="stylesheet" type="text/css" href="/static/css/default.css">-->
+<!-- <link rel="stylesheet" type="text/css" href="/static/css/nouislider.css"> -->
+<!-- div.demo { padding: 10px !important; }; -->
+{% endblock css%}
+{% block js %}
+
+<script type="text/javascript">
+  $(document).ready(function() {
+    $('#ontologyTable').DataTable();
+
+  } );
+
+  function submitForm(obj){
+      objId = obj.id;
+
+      data = objId.split("-");
+
+      if (data.length > 0){
+
+         ontologyId = data[1];
+
+      }
+
+    $("#ontologyId").val(ontologyId);
+
+    $("#ontologyForm").submit();
+  }
+  
+  function submitDeleteFiles(obj){
+  
+      objId = obj.id;
+
+      data = objId.split("-");
+
+      if (data.length > 0){
+
+         dataFileId = data[1];
+
+      }
+
+    $("#dataFileId").val(dataFileId);
+
+    if(confirm('Please confirm if you would like to delete this file. Deleting the counts matrix file will delete associated qc files and any results of past analysis on the file')){
+
+      $("#dataFileForm").attr("action","/rnaseq/deleteProjectFiles/");
+  
+      $("#dataFileForm").submit();
+    }
+  }
+  
+  function displayOntology(obj){
+      objId = obj.id;
+
+      data = objId.split("-");
+
+      if (data.length > 0){ //does this have a bug with a missing id leading to an array of length 1? or is that an empty string?
+
+         ontologyId = data[1];
+
+      }
+
+  //look into these lines
+    $("#hiddenId").val(ontologyId);
+
+    $("#ontologyForm").attr("action","/smellingDisorder/displayOntology/");
+    
+    $("#ontologyForm").submit();
+  }  
+
+
+</script>
+
+{% endblock js %}
+
+{% block content %}
+
+<!-- /.row -->
+<div class="row">
+  <div class="col-lg-12">
+    <h1 class="page-header">Ontologies</h1>
+  </div>
+  <!-- /.col-lg-12 -->
+</div>
+<!-- /.row -->
+<form method = "post" id = "ontologyForm" name = "ontologyForm" action="/smellingDisorder/displayOntology/">
+ {% csrf_token %} 
+ <input type="hidden" value="" name="hiddenId" id ="hiddenId"/>
+  <div class="row">
+  <div class="col-lg-12">
+    <div class="panel panel-default">
+      <div class="panel-heading">
+        Ontology list
+      </div>
+      <!-- /.panel-heading -->
+      <div class="panel-body" >
+        <div class="table-responsive" >
+
+	  <table id="ontologyTable" class="display" cellspacing="0" width="100%">
+	   <thead>
+	      <tr >
+		<th>Name</a></th>
+		<th>Description</a></th>
+		<th>Details</a></th>		
+              </tr>
+           </thead>
+           <tbody>
+           {% for ontology in ontologies %}
+             <tr>
+	       <td> {{ ontology.name}} </td>
+	       <td> {{ ontology.description}} </td>
+               <td><button type="button" class="btn btn-primary" id = "ontologyDetailButton-{{ontology.id}}" name = "ontologyDetailButton-{{ontology.id}}" onclick ="javascript:displayOntology(this);">Details </button></td>
+             </tr> 
+
+           {% endfor %}
+           </tbody>
+          </table>
+        </div>
+        <!-- /.table-responsive -->
+      </div>
+      <!-- /.panel-body -->
+    </div>
+
+  </div>
+  <!-- /.col-lg-12 -->
+ </div>
+ <!-- /.row -->
+ <!-- <p class="text-center">
+
+   <button type="submit" class="btn btn-primary btn-lg" value = "0" name = "submitButton" id="submitButton-0" onclick ="javascript:submitDataFileHandlerForm(this);">Project List</button>&nbsp;&nbsp;&nbsp;
+
+ </p> -->
+</form>
+{% endblock content %}

@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block css %}
+<link rel="stylesheet" type="text/css" href="/static/css/default.css">
+{% endblock css%}
+{% block js %}
+
+<script type="text/javascript">
+  
+ $(document).ready(function() {
+
+    $('#questionnairesDataTable').DataTable();
+
+  });
+  
+  function processCancel(obj){
+  
+      $("#editStudyForm").attr('action','/smellSurvey/displayStudyList/');          
+
+      $("#editStudyForm").submit();
+  
+  }
+
+</script>
+
+{% endblock js %}
+
+{% block content %}
+
+<form method = "post" id = "editstudyForm" name = "editstudyForm" action="/smellSurvey/submitEditStudy/">
+ {% csrf_token %} 
+ <input type="hidden" name="studyId" id ="studyId" value = "{{studyObj.study.id}}"/>
+
+ <div class="row">  
+  <!-- panel for studys -->  
+  <div class="col-lg-12">
+    <div class="panel panel-primary">
+      <div class="panel-heading">
+      	  <h4 class="panel-title">
+	    <a data-toggle="collapse" data-parent="#panels1" href="#editstudyPanel">
+	      Edit study. (Click to toggle this panel.)
+	    </a>
+	  </h4>  
+      </div>
+      <!-- /.panel-heading -->
+      <div class="panel-body">
+       <div id="editstudyPanel" class="panel-collapse collapse in" >    
+
+      <div class="form-group">
+	<label>Name:</label>&nbsp;<input type = "text" id = "studyName" name = "studyName" value = "{{studyObj.study.name}}" width = "200px;" required/>
+	<p class="help-block">Name of study. </p>
+      </div>  
+
+      <div class="form-group">
+	<label>Description:</label>&nbsp;<input type = "text" id = "studyDescription" name = "studyDescription" value = "{{studyObj.study.description}}" width = "200px;" required/>
+	<p class="help-block">Description of study. </p>
+      </div>
+      <div class="form-group">      
+	  <label>Select Questionnaire:</label>
+
+	    <select class="form-control" name="instrumentAdministratorId" id="instrumentAdministratorId" onchange="javascript:setLeadList(this);" required>
+
+	      <option value = "" id="questionnaireId" name="questionnaireId">-- Select questionnaire--</option>
+		{% for questionnaireObj in studyObj.questionnaireObjList %}
+	      <option value = "{{ questionnaireObj.questionnaire.id }}" {% if questionnaireObj.questionnaire.id == studyObj.study.questionnaire.id %} selected {% endif %} >{{questionnaireObj.questionnaire.name}}</option>
+	       {% endfor %}
+	    </select> 
+	    
+        </div>
+        <!-- /.table-responsive -->
+    </div>
+  </div>
+</div>
+{% if not surveyUser.role.isTester %}
+ <!-- /.row -->
+<div class="row">
+  <div class="col-lg-12">
+    <p class="text-center">
+      <button type="submit" class="btn btn-primary btn-lg" value = "0" name = "submitButton" id = "submitButton" onclick = "javascript:processCancel(this);">Cancel</button>&nbsp;&nbsp;&nbsp;
+      <button type="submit" class="btn btn-danger btn-lg" value = "1" name = "submitButton" id = "submitButton" >Update</button>     
+    </p>
+  </div>
+  <!-- /.col-lg-12 -->
+ </div>
+ <!-- /.row -->
+{% endif %}
+</form>
+{% endblock content %}
+

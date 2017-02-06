@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block css %}
+<link rel="stylesheet" type="text/css" href="/static/css/default.css">
+{% endblock css%}
+{% block js %}
+
+<script type="text/javascript">
+ 
+ $(document).ready(function() {
+    
+    $('#questionAnswersTable').DataTable({
+      paging: false   
+    });
+
+  });
+  
+  function processCancel(obj){
+  
+      $("#addInstrumentAdministratorForm").attr('action','/smellSurvey/administerQuestionnaire/');          
+
+      $("#addInstrumentAdministratorForm").submit();
+  
+  }
+
+</script>
+
+{% endblock js %}
+
+{% block content %}
+
+<!-- /.row -->
+
+<form method = "post" id = "smellSurveyForm" name = "smellSurveyForm" action="/smellSurvey/administerQuestionnaireFirst/">
+ 
+ {% csrf_token %} 
+ 
+ <input type="hidden" name="studyId" id ="studyId" value = "{{study.id}}"/>
+ <input type="hidden" name="siteId" id ="siteId" value = "{{site.id}}"/>
+ 
+ <input type="hidden" name="questionnaireId" id ="questionnaireId" value = "{{questionnaire.id}}"/>
+ <input type="hidden" name="administratorId" id ="administratorId" value = "{{administrator.id}}"/>
+ 
+ <input type="hidden" name="patientId" id ="patientId" value = "{{patient.id}}"/>
+ 
+ <input type="hidden" name="upinId" id ="upinId" value = "{{upinId}}"/>
+ 
+<div class="row">  
+    <div class="col-lg-12"> 
+    
+     <div class="jumbotron"> 
+     
+<p>     
+     <div class="container" style="background-color:#D6D3D3;border-radius: 15px;">
+        
+        <h2>Why this questionnaire?</h2>
+
+     </div>
+     
+     
+</p>
+     <div style="text-align:left;"> 
+        <p>We want to improve the medical management of smell and taste disorders around the world. To achieve that, we need your help!
+	   </p>
+	   <p>
+	   By answering several questions about different aspect of your health, which will be related to smell and taste, you will help doctors, scientists, and indirectly other people with this condition.
+	   </p>	
+	   
+		   <p>
+
+     </div>
+	<button type="submit" class="btn btn-primary btn-lg" value = "0" name = "submitButton" id = "submitButton">Next</button>
+
+      </p>
+   </div>
+ </div>
+</div>
+
+</form>
+{% endblock content %}

@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block css %}
+<link rel="stylesheet" type="text/css" href="/static/css/default.css">
+<!-- <link rel="stylesheet" type="text/css" href="/static/css/nouislider.css"> -->
+<!-- div.demo { padding: 10px !important; }; -->
+{% endblock css%}
+{% block js %}
+
+<script type="text/javascript">
+
+  function submitAddRole(obj){ 
+  
+      $("#roleListForm").attr('action','/smellSurvey/addRole/');     
+
+      $("#roleListForm").submit();
+
+  } 
+
+  function submitroleLink(obj){ 
+  
+      objId = obj.id;
+    
+      data = objId.split("-");    
+
+      roleId = data[1];
+    
+      $("#roleId").val(roleId);
+
+      $("#roleListForm").attr('action','/smellSurvey/editRole/');          
+
+      $("#roleListForm").submit();
+
+  }
+  
+  $(document).ready(function() {
+    $('#rolesListTable').DataTable();
+
+  } );
+
+</script>
+
+{% endblock js %}
+
+{% block content %}
+
+<!-- /.row -->
+<div class="row">
+  <div class="col-lg-12">
+    <h1 class="page-header">Roles</h1>
+  </div>
+  <!-- /.col-lg-12 -->
+</div>
+<!-- /.row -->
+<form method = "post" id = "roleListForm" name = "roleListForm" action="/smellSurvey/editRole/">
+ {% csrf_token %} 
+ <input type="hidden" value="" name="roleId" id ="roleId"/>
+ <div class="row">
+  <div class="col-lg-12">
+    <div class="panel panel-primary">
+      <div class="panel-heading">
+        Select a role from the list of roles
+      </div>
+      <!-- /.panel-heading -->
+      <div class="panel-body" >
+      {% if messages %}
+	<ul class="messages">
+        {% for message in messages %}
+          <li{% if message.tags %} class="{{ message.tags }}"{% endif %}><font color="red">{{ message }}</font></li>
+        {% endfor %}
+	</ul>
+      {% endif %}
+        <div class="table-responsive" >
+	  <table id="rolesListTable" class="display" cellspacing="0" width="100%">	  	  
+	   <thead>
+	      <tr >
+		<th>Name</th>		
+		<th>Roles</th>	
+		<th>System Admin?</th>	
+		<th>Investigator?</th>	
+		<th>Survey User?</th>			
+		<th>Tester?</th>			
+              </tr>
+           </thead>
+           <tbody>
+           {% for role in rolesList %}
+             <tr>
+	       <td> <a id = "roleLink-{{role.id}}" href="#" onclick ="javascript:submitroleLink(this);"> {{ role.name}} </a> </td>
+	       <td> {{ role.description}}</td>
+	       <td> {{ role.isSuperUser}}</td>	       
+	       <td> {{ role.isAdministrator}}</td>	  
+	       <td> {{ role.isPatient}}</td>	  
+	       <td> {{ role.isTester}}</td>	  	       
+             </tr>
+           {% endfor %}
+           </tbody>
+          </table>
+        </div>
+        <!-- /.table-responsive -->
+      </div>
+      <!-- /.panel-body -->
+    </div>
+    <!-- /.panel -->
+  </div>
+  <!-- /.col-lg-12 -->
+ </div>
+ <!-- /.row -->
+{% if not surveyUser.role.isTester %}
+<div class="row">
+  <div class="col-lg-12">
+    <p class="text-center">
+      <button type="submit" class="btn btn-danger btn-lg" value = "1" name = "submitButton" id = "submitButton" onclick ="javascript:submitAddRole(this);">Add Role</button>     
+    </p>
+  </div>
+  <!-- /.col-lg-12 -->
+ </div>
+{% endif %}
+</form>
+{% endblock content %}

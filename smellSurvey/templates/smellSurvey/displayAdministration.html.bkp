@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block css %}
+<!--<link rel="stylesheet" type="text/css" href="/static/css/default.css">-->
+<!-- <link rel="stylesheet" type="text/css" href="/static/css/nouislider.css"> -->
+<!-- div.demo { padding: 10px !important; }; -->
+{% endblock css%}
+{% block js %}
+
+<script type="text/javascript">
+
+  $(document).ready(function() {
+
+    $('#administrationTable').DataTable();
+
+  } );
+
+function displayAdministration(obj){
+  objId=obj.id;
+  
+  data=objId.split("-");
+  
+  if (data.length > 0){
+    
+    administrationId = data[1];
+    
+  }
+  
+  $("#administrationId").val(administrationId);
+  
+  $("#administrationListForm").submit();
+  
+}
+
+function submitAddAdministration(obj){
+  objId=obj.id;
+  
+  data=objId.split("-");
+  
+  if (data.length > 0){
+    
+    administrationId = data[1];
+    
+  }
+  
+  $("#administrationId").val(administrationId);
+  
+  $("#administrationListForm").attr("action","/smellingDisorder/displayAdministration/");
+  
+  $("#administrationListForm").submit();
+  
+}
+</script>
+
+{% endblock js %}
+
+{% block content %}
+
+<!-- /.row -->
+<div class="row">
+  <div class="col-lg-12">
+    <h1 class="page-header">Administration Details</h1>
+  </div>
+  <!-- /.col-lg-12 -->
+</div>
+<!-- /.row -->
+<form method = "post" id = "administrationListForm" name = "administrationListForm" action="/smellingDisorder/displayAdministration/">
+ {% csrf_token %} 
+ <input type="hidden" value="" name="administrationId" id ="administrationId"/>
+ <div class="row">
+  <div class="col-lg-12">
+    <div class="panel panel-default">
+      <div class="panel-heading">
+        Administration List
+      </div>
+      <!-- /.panel-heading -->
+      <div class="panel-body" >
+        <div class="table-responsive" >
+	  <table id="administrationTable" class="display" cellspacing="0" width="100%">
+	   <thead>
+	      <tr >
+		<th>Patient</a></th>
+		<th>Administrator</th>	
+		<th>Questionnaire</th>		
+		<th>Start</th>		
+		<th>Stop</th>		
+		<th>Details</th>		
+              </tr>
+           </thead>
+           <tbody>
+	   {% for administration in administrations %}
+             <tr>
+               <td> {{ administration.patient.name}}</td>
+	       <td> {{ administration.administrator }}</td>
+	       <td> {{ administration.questionnaire }}</td>
+	       <td> {{ administration.startTime }}</td>
+	       <td> {{ administration.stopTIme }}</td>	       
+               <td><button type="button" class="btn btn-primary" id = "administrationDetailButton-{{administration.id}}" name = "administrationDetailButton-{{administration.id}}" onclick ="javascript:displayAdministration(this);">Details </button></td>
+             </tr>
+	     {% endfor %}
+           </tbody>
+          </table>
+        </div>
+        <!-- /.table-responsive -->
+      </div>
+      <!-- /.panel-body -->
+    </div>
+    <!-- /.panel -->
+  </div>
+  <!-- /.col-lg-12 -->
+ </div>
+ <!-- /.row -->
+ <p class="text-center">
+
+  <button type="submit" class="btn btn-primary btn-lg" value = "0" name = "submitButton" id="submitButton-0" onclick ="javascript:submitAddAdministration(this);">Add Administration</button>&nbsp;&nbsp;&nbsp;
+
+ </p> 
+</form>
+{% endblock content %}

@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block css %}
+<link rel="stylesheet" type="text/css" href="/static/css/default.css">
+{% endblock css%}
+{% block js %}
+
+<script type="text/javascript">
+ 
+ $(document).ready(function() {
+    
+    $('#sitesDataTable').DataTable({
+      paging: false   
+    });
+
+  });
+  
+  function processCancel(obj){
+  
+      $("#addQuestionForm").attr('action','/smellSurvey/displayQuestionnaire/');          
+
+      $("#addQuestionForm").submit();
+  
+  }
+
+</script>
+
+{% endblock js %}
+
+{% block content %}
+
+<!-- /.row -->
+<div class="row">
+  <div class="col-lg-12">
+    <h1 class="page-header">Add Question</h1>
+  </div>
+  <!-- /.col-lg-12 -->
+</div>
+<form method = "post" id = "addQuestionForm" name = "addQuestionForm" action="/smellSurvey/submitAddQuestion/">
+
+ {% csrf_token %} 
+ <input type="hidden" name="questionnaireId" id ="questionnaireId" value="{{questionnaire.id}}"/>
+ <div class="row">
+  <div class="col-lg-12">
+  <div class="panel panel-primary">
+      <div class="panel-heading">
+	   <h4 class="panel-title">
+	     <a data-toggle="collapse" data-parent="#accordion3" href="#sectionsPanel-{{sectionObj.section.id}}">
+	     Add Question&nbsp;(  Please click to toggle this panel. )
+	     </a>
+	   </h4>
+      </div>
+      <div id="sectionsPanel-{{sectionObj.section.id}}" class="panel-collapse collapse in">
+	<div class="panel-body">	    
+ 
+	  <div class="form-group">
+	      <label>Text:</label>
+	      <input type="text" class="form-control" id = "questionText" name = "questionText" value = "{{questionObj.question.text}}" required/>
+	      <p class="help-block">Question text.</p>
+	  </div>    
+    
+	  <div class="form-group">
+	      <label>Select Section</label>
+	      <select class="form-control" name="sectionId" id="sectionId" required>
+		<option value = "">-- Select section --</option>
+		  {% for section in sections %}
+		    <option value = "{{ section.id }}" >{{section.name}}</option>
+		 {% endfor %}
+	      </select>
+	  </div>         
+    
+	  <div class="form-group">
+	      <label>Select Ontology</label>
+	      <select class="form-control" name="ontologyId" id="ontologyId" required>
+		<option value = "">-- Select ontology --</option>
+		  {% for ontology in ontologies %}
+		    <option value = "{{ ontology.id }}" >{{ontology.name}}</option>
+		 {% endfor %}
+	      </select>
+	  </div> 
+	  
+	  <div class="form-group">
+	      <label>Question ID:</label>
+	      <input type="number" class="form-control" id = "questionId" name = "questionId" value = "" required/>
+	      <p class="help-block">Question id.</p>
+	  </div>    
+	  
+	  <div class="form-group">
+	      <label>Select Parent Question</label>
+	      <select class="form-control" name="parentQuestionId" id="parentQuestionId" >
+		<option value = "">-- Select parent question --</option>
+		  {% for parentQuestion in parentQuestions %}
+		    <option value = "{{ parentQuestion.id }}" >{{parentQuestion.text}}</option>
+		 {% endfor %}
+	      </select>
+	  </div>        
+    
+	  <div class="form-group">
+	      <label>Select Parent Answer</label>
+	      <select class="form-control" name="parentQuestionAnswerId" id="parentQuestionAnswerId" >
+		<option value = "">-- Select answer --</option>
+		  {% for questionAnswer in parentQuestionAnswers %}
+		    <option value = "{{ questionAnswer.id }}" >{{questionAnswer.text}}</option>
+		 {% endfor %}
+	      </select>
+	  </div>  
+	</div>
+     </div>    
+
+   </div>
+</div>
+    <p class="text-center">
+      <button type="input" class="btn btn-primary btn-lg" value = "0" name = "submitButton" id = "submitButton" onclick = "javascript:window.history.back(this);">Cancel</button>&nbsp;&nbsp;&nbsp;
+      <button type="submit" class="btn btn-danger btn-lg" value = "1" name = "submitButton" id = "submitButton" >Submit</button>     
+    </p>
+</form>
+{% endblock content %}

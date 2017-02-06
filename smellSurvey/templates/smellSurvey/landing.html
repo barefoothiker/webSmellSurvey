@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+{% block css %}
+
+{% endblock css%}
+{% block js %}
+<script type="text/javascript">
+
+$(document).ready(function(){
+
+    $('#upinDataTable').DataTable({
+      paging: false   
+    });
+
+});
+
+  function setUpinID(obj){
+  
+      selectedUpinId = $("#selectedUPINID").val() ;
+  
+      $("#upinId").val(selectedUpinId);          
+
+  }  
+
+  function reloadUPIN(obj){
+  
+      $("#landingForm").attr('action','/smellSurvey/reloadUPIN/');          
+
+      $("#landingForm").submit();
+  
+  }
+
+</script>
+{% endblock js %}
+{% block content %}
+<form action="/smellSurvey/processLanding/"  enctype="multipart/form-data" method = "post" id = "landingForm" name ="landingForm" >
+{% csrf_token %} 
+<input type = "hidden" id = "studyId" name = "studyId" value = "{{study.id}}" />
+<input type = "hidden" id = "upinId" name = "upinId" value = "{{newUPINID}}" />
+<div class="row">
+  <div class="col-lg-12">
+    <div class="panel-body">
+      <div class="">
+        <div class="row jumbotron" style = "text-align:left;">
+	  
+	  {% if  surveyUser.role.isPatient and study.name != '' %}	 
+	  
+	    <p> Welcome to the smell disorder survey.</p> 
+
+	    <p>Thank you for choosing to offering to participate in the {{study}} study. </p>
+
+	    <p>Your unique UPINID is <font color="red">{{newUPINID}}</font>. This will be used to keep record of your responses.</p>
+	  
+	    <p>To continue, please click on the button below to start a new survey, or select from a list below to continue an existing survey.</p>
+
+	  {% else %}
+	  
+	    <p>
+	    
+	        Dear {{user.username}}, <br/>
+
+		Welcome to the smell and taste ontology-based phenotyping
+		System.  Please use the management taskbar above to continue.   
+
+	    </p>
+	  
+	  {% endif %}
+	  
+	  <div class="col-md-2 col-md-offset-3">
+
+
+	    <table cellspacing="5" cellpadding="5" border = "0" style="text-align:center;">
+             {% if surveyUser.role.isSuperuser  or user.is_superuser %}
+
+
+	      <!--<tr>          -->
+		
+		<!--<td>-->
+		  <!--<button type="submit" class="btn btn-primary" value = "1" name = "smellSurveyHomeButton" id = "smellSurveyHomeButtonUploadQuestionnaire" style="margin-bottom: 5px;margin-right: 5px; width:200px;">Upload Questionnaire</button>-->
+		<!--</td>-->
+		
+		<!--<td>-->
+		  <!--<button type="submit" class="btn btn-primary" value = "2" name = "smellSurveyHomeButton" id = "smellSurveyHomeButtonListQuestionnaires"  style="margin-bottom: 5px; width:200px;">List Questionnaires</button>-->
+		<!--</td>-->
+       
+		<!--<td>-->
+		  <!--<button type="submit" class="btn btn-primary" value = "3" name = "smellSurveyHomeButton" id = "smellSurveyHomeButtonUploadQuestionnaire" style="margin-bottom: 5px;margin-right: 5px; width:200px;">Sites</button>-->
+		<!--</td>-->
+		
+		<!--</tr>-->
+		
+		<!--<tr>-->
+		
+		<!--<td>-->
+		  <!--<button type="submit" class="btn btn-primary" value = "4" name = "smellSurveyHomeButton" id = "smellSurveyHomeButtonListQuestionnaires"  style="margin-bottom: 5px; width:200px;">Studies</button>-->
+		<!--</td>-->
+	      
+		<!--<td>-->
+		  <!--<button type="submit" class="btn btn-primary" value = "5" name = "smellSurveyHomeButton" id = "smellSurveyHomeButtonUploadQuestionnaire" style="margin-bottom: 5px;margin-right: 5px; width:200px;">Users</button>-->
+		<!--</td>-->
+
+		<!--<td>-->
+		  <!--<button type="submit" class="btn btn-primary" value = "6" name = "smellSurveyHomeButton" id = "smellSurveyHomeButtonListQuestionnaires"  style="margin-bottom: 5px; width:200px;">Roles</button>-->
+		<!--</td>-->
+		
+		<!--</tr>-->
+		
+		<!--<tr>-->
+
+		<!--<td>-->
+		  <!--<button type="submit" class="btn btn-primary" value = "7" name = "smellSurveyHomeButton" id = "smellSurveyHomeButtonListQuestionnaires"  style="margin-bottom: 5px; width:200px;">Investigators</button>-->
+		<!--</td>-->
+         
+		<!--<td>-->
+		  <!--<button type="submit" class="btn btn-primary" value = "10" name = "smellSurveyHomeButton" id = "smellSurveyHomeButtonListSuperUsers"  style="margin-bottom: 5px; width:200px;">Super Users</button>-->
+		<!--</td>-->
+
+		<!--<td>-->
+		  <!--<button type="submit" class="btn btn-primary" value = "9" name = "smellSurveyHomeButton" id = "smellSurveyHomeButtonListQuestionnaires"  style="margin-bottom: 5px; width:200px;" >Administrations</button>-->
+		<!--</td>-->
+
+	      <!--</tr>	-->
+	      
+	    </table>
+      
+	    {% elif  surveyUser.role.isAdministrator %}
+	    
+            <!--<p></p>	    -->
+	    <!--<tr>-->
+	    
+		<!--<td>-->
+		  <!--<button type="submit" class="btn btn-primary" value = "5" name = "smellSurveyHomeButton" id = "smellSurveyHomeButtonUploadQuestionnaire" style="margin-bottom: 5px;margin-right: 5px; width:200px;">Enrol Patients</button>-->
+		<!--</td>	    -->
+	    
+		<!--<td>-->
+		  <!--<button type="submit" class="btn btn-primary" value = "8" name = "smellSurveyHomeButton" id = "smellSurveyHomeButtonUploadQuestionnaire" style="margin-bottom: 5px;margin-right: 5px; width:200px;">Administer Survey</button>-->
+		<!--</td>-->
+		
+	    <!--</tr>-->
+
+	    {% elif  surveyUser.role.isPatient %}
+	    
+	    <!--</table>-->
+	    
+	    <tr>
+	    
+		<td>
+		  <button type="submit" class="btn btn-primary" value = "8" name = "smellSurveyHomeButton" id = "smellSurveyHomeButtonUploadQuestionnaire" style="margin-bottom: 5px;margin-right: 5px; width:200px;">Take Survey</button>
+		</td>
+		
+	    </tr>
+	    
+	    {% endif%}
+	    </table>
+	    
+	  </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- /.col-lg-12 -->
+</div>
+
+{% if  surveyUser.role.isPatient %}
+
+  {% if messages %}
+  <p color="red">
+    <ul>
+     {% for message in messages %}
+       <li>       
+         {{message|safe}}
+       </li>   
+   {% endfor %}
+   </ul>
+  </p>
+  {% endif %} 
+
+<div class="row">  
+  <!-- panel for sites -->  
+  <div class="col-lg-12">
+    <div class="panel panel-primary">
+      <div class="panel-heading">
+      	  <h4 class="panel-title">
+	    <a data-toggle="collapse" data-parent="#panels1" href="#upinListPanel">
+	      Use existing UPIN. (Click to toggle this panel.)
+	    </a>
+	  </h4>  
+      </div>
+      <!-- /.panel-heading -->
+      <div class="panel-body">
+       <div id="studyListPanel" class="panel-collapse collapse in" >      
+        <div class="table-responsive"  style="height:300px;overflow-y:auto;" -webkit-scrollbar>
+
+	  <p> If you would like to complete an incomplete survey, please upload the session file that you downloaded prior to quitting the earlier session.</p>
+
+	  <div class="form-group">
+	  
+		  <label>Session File:&nbsp;</label>
+	
+		  <input class="form-control"  type = "file" id = "sessionFile" name = "sessionFile" value = "" />
+
+	  </div> 
+	  
+	  <p>
+
+	    <button type="submit" class="btn btn-primary btn-lg" value = "1" name = "smellSurveyReloadUPINButton" id = "smellSurveyReloadUPINButton" style="margin-bottom: 5px;margin-right: 5px; width:200px;" onclick = "javascript:reloadUPIN(this);">Reload Session</button>	  
+	  
+	  </p>
+	</div>
+	<!-- /.panel-body -->
+      </div>
+      <!-- /.panel -->
+    </div>
+  <!-- /.col-lg-12 -->
+ </div>
+ <!-- /.row -->
+ 
+
+ {% endif %}
+
+</form>
+<!-- /.row -->
+{% endblock content %}

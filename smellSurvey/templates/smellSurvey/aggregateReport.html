@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+{% block css %}
+<link rel="stylesheet" type="text/css" href="/static/css/default.css">
+<!-- <link rel="stylesheet" type="text/css" href="/static/css/nouislider.css"> -->
+<!-- div.demo { padding: 10px !important; }; -->
+{% endblock css%}
+{% block js %}
+
+<script type="text/javascript">
+
+  function displayAdministration(obj){ 
+  
+    administrationId = 0
+  
+    objId = obj.id;
+  
+    data = objId.split("-");
+  
+    if (data.length > 0){
+
+       administrationId = data[1];
+       
+	$("#administrationId").val(administrationId);
+      
+	$("#reportForm").attr('action','/smellSurvey/displayAdministration/');    
+    
+	$("#reportForm").submit();
+
+    }
+
+  }
+  
+  function downloadAggregateReport(obj){
+   
+      $("#reportForm").attr('action','/smellSurvey/downloadAggregateReport/');          
+
+      $("#reportForm").submit();
+  
+  }  
+
+  function downloadPercentCompleteReport(obj){
+   
+      $("#reportForm").attr('action','/smellSurvey/downloadPercentageCompleteReport/');          
+
+      $("#reportForm").submit();
+  
+  }  
+  
+  $(document).ready(function() {
+    
+    $('#upinDataTable').DataTable({
+      paging: false    
+    });
+    $('#sectionListTable').DataTable({
+       paging: false 
+      }
+      );
+    $('#questionListTable').DataTable({
+       paging: false 
+      }
+    );      
+    
+    $('#selectAllUPINs').click ( function()    
+     {        
+       $("input[name='reportUpinId']").prop('checked', $(this).is(':checked'));
+     }
+    );
+
+    $('#selectAllSections').click ( function()    
+     {        
+       $("input[name='sectionId']").prop('checked', $(this).is(':checked'));
+     }
+    );
+    
+    $('#selectAllMultipleChoices').click ( function()    
+     {        
+       $("input[name='multipleChoiceId']").prop('checked', $(this).is(':checked'));
+     }
+    );    		    
+
+  } );
+
+</script>
+
+{% endblock js %}
+
+{% block content %}
+
+<!-- /.row -->
+<div class="row">
+  <div class="col-lg-12">
+    <h1 class="page-header">Data</h1>
+  </div>
+  <!-- /.col-lg-12 -->
+</div>
+<!-- /.row -->
+<form method = "post" id = "reportForm" name = "reportForm" action="/smellSurvey/downloadAggregateReport/" >
+ {% csrf_token %} 
+ <input type="hidden" value="" name="upinId" id ="upinId"/>
+ <input type="hidden" value="{{site.id}}" name="siteId" id ="siteId"/>
+ <input type="hidden" value="{{administrator.id}}" name="administratorId" id ="administratorId"/>
+ <input type="hidden" value="{{study.id}}" name="studyId" id ="studyId"/>
+ <input type="hidden" value="{{administration.id}}" name="administrationId" id ="administrationId"/>
+ <input type="hidden" value="0" name="backToQuestionnaireFlag" id ="backToQuestionnaireFlag"/>
+ 
+ <div class="row">
+  <div class="col-lg-12">
+    <div class="panel panel-primary">
+      <div class="panel-heading">
+	  <h4 class="panel-title">
+	    <a data-toggle="collapse" data-parent="#panels1" href="#selectionParametersPanel">
+	      Selection Parameter Details. (Click to toggle this panel.)
+	    </a>
+	  </h4>        
+      </div>
+      <!-- /.panel-heading -->
+      <div class="panel-body" >
+	<div id="selectionParametersPanel" class="panel-collapse collapse" >
+	  <p class="text-center">
+	    <h4>Site:&nbsp;{{ site }}</h4>
+	  </p>
+	  <p>
+	    <h4>Investigator:&nbsp;{{ administrator }}</h4>
+	  </p>
+	  <p>
+	    <h4>Study:&nbsp;{{ study }}</h4>
+	  </p>
+
+	</div>
+      </div>
+      <!-- /.panel-body -->
+    </div>
+    <!-- /.panel -->
+
+    <div class="panel panel-primary">
+      <div class="panel-heading">
+      	  <h4 class="panel-title">
+	    <a data-toggle="collapse" data-parent="#panels1" href="#reportListPanel">
+	      Data. (Click to toggle this panel.)
+	    </a>
+	  </h4>        
+      </div>
+      <!-- /.panel-heading -->
+      <div class="panel-body" style="height:500px;overflow-y:auto;">
+	<div id="reportListPanel" class="panel-collapse collapse in" >
+	<p>Please select the UPIN's which need to show on the report. .</p>
+
+	  <div class="table-responsive" >
+	    <table id="upinDataTable" class="display" cellspacing="0" width="100%" >	  	  
+	     <thead>
+	        <tr >
+	          <th>Select<input type="checkbox" value="" name="selectAllUPINs" id="selectAllUPINs" checked="checked"> </th>
+	    	  <th>UPIN id</a></th>
+	  	  <th>Adminstrator</th>
+		  <th>Site</th>
+		  <th>Start</th>
+		  <th>Stop</th>
+		</tr>
+	    </thead>
+	    <tbody>
+	    {% for upinObj in upinObjList %}
+             <tr>
+	        <td>
+		 <input type="checkbox" id="reportUpinId-{{upinObj.upin.id}}" name="reportUpinId" value={{upinObj.upin.id}} checked="checked">
+	        </td>
+	        <td> {% if upinObj.administration != '' %} <a id = "displayAdministration-{{upinObj.administration.id}}" name = "displayAdministration-{{upinObj.administration.id}}" href="#" onclick ="javascript:displayAdministration(this);">{% endif%} {{ upinObj.upin.upinId }} {% if upinObj.administration != '' %}</a>{% endif %} </td>
+	        <td>{{ upinObj.administration.administrator.user.username}}</td>
+	        <td>{{ upinObj.administration.site}}</td>
+	        <td>{{ upinObj.administration.startTime}}</td>
+	        <td>{{ upinObj.administration.stopTime}}</td>
+              </tr>
+	    {% endfor %}
+	    </tbody>
+	    </table>
+	  </div>
+	  <!-- /.table-responsive -->
+	</div>
+      </div>
+      <!-- /.panel-body -->
+    </div> 
+    <!-- /.panel -->
+    <div class="panel panel-primary">
+      <div class="panel-heading">
+	<h4 class="panel-title">
+	  <a data-toggle="collapse" data-parent="#panels1" href="#sectionListPanel">
+	    Report Download. Enter parameters and click button below to download a CSV report. (Click to toggle this panel.)
+	  </a>
+	</h4>        
+      </div>
+      <!-- /.panel-heading -->
+      <div class="panel-body" >
+	<div id="sectionListPanel" class="panel-collapse collapse in">
+	  <p>Please list sections to be included in the report.</p> 	    
+	  <p>Please scroll to see all records in this panel. You can sort each column by clicking on the column headings.</p>	    
+	  <div class="table-responsive" >
+	    <table id="sectionListTable" class="display" cellspacing="0" width="100%">	  	  
+	      <thead>
+		<tr>
+		  <th>Select<input type="checkbox" value="" name="selectAllSections" id="selectAllSections" checked="checked"></th>
+		  <th>Section</th>    
+		</tr>
+	      </thead>
+	      <tbody>
+	      {% for section in sections %}
+	      <tr>
+		<td>
+		  <input type="checkbox" id="sectionId-{{section.id}}" name="sectionId" checked="checked" value="{{section.id}}">
+		</td>
+		<td>{{ section}}</td>    
+	      </tr> 
+	      {% endfor %}
+	      </tbody>
+	    </table>
+	  </div>
+	  <br/>
+	  
+	  <p>Please select the questions for which you would like to see the multiple choice responses. </p>
+  
+	    <br/>
+	    <div class="table-responsive" style="height:300px;overflow-y:auto;">
+	      <table id="questionListTable" class="display" cellspacing="0" width="100%">	  	  
+		<thead>
+		  <tr>
+		    <th>Select<input type="checkbox" value="" name="selectAllMultipleChoices" id="selectAllMultipleChoices" checked="checked"></th>
+		    <th>Question</th>
+		  </tr>
+		</thead>
+		<tbody>
+		{% for question in questions %}
+		<tr>
+		  <td>
+		    <input type="checkbox" id="multipleChoiceId-{{question.id}}" name="multipleChoiceId"  checked="checked" value="{{question.id}}">
+		  </td>		    
+		  <td>
+		    {{question.text}}
+		  </td>		    
+		</tr> 
+		{% endfor %}
+		</tbody>
+	      </table>
+	    </div>
+	<!-- /.panel-body -->
+      </div>
+      <!-- /.panel --> 
+    </div>
+  <!-- /.col-lg-12 -->
+
+  </div>
+
+  <p class="text-center">
+    <div class="checkbox">
+      <label>
+	<input type="checkbox" value="1" name="printSelectionParameters" id="printSelectionParameters" ><b>Include selection parameters.</b></input>
+      </label>
+    </div>
+  </p>
+  <p class="help-block">Please indicate if selection parameters are to be included at the header of the report.</p>
+
+  <p class="text-center">
+    <div class="checkbox">
+      <label>
+	<input type="checkbox" value="1" name="printCompletedOnly" id="printCompletedOnly" ><b>Include only completed questionnaires.</b></input>
+      </label>
+    </div>
+  </p>
+  <p class="help-block">Please indicate if only completed questionnaires are to be included in the report.</p>
+ 
+ </div>
+
+  <p class="text-center">
+
+   <button type="submit" class="btn btn-primary btn-lg" value = "1" name = "downloadReportButton" id="downloadReportButton" onclick ="javascript:downloadPercentCompleteReport(this);">Download Percent Complete report</button>
+
+   <button type="button" class="btn btn-danger btn-lg" value = "0" name = "downloadReportButton" id="downloadReportButton" onclick ="javascript:downloadAggregateReport(this);">Download Aggregate report</button>&nbsp;&nbsp;&nbsp;
+
+ </p>
+
+ <!-- /.row -->
+</form>
+{% endblock content %}

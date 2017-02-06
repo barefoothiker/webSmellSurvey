@@ -1,0 +1,318 @@
+{% extends "base.html" %}
+{% block css %}
+<link rel="stylesheet" type="text/css" href="/static/css/default.css">
+<style>
+#questionAnswersTable thead {
+  display: none;
+  font-size: 18px;
+}
+input[type=checkbox]
+{
+
+  -ms-transform: scale(2); /* IE */
+  -moz-transform: scale(2); /* FF */
+  -webkit-transform: scale(2); /* Safari and Chrome */
+  -o-transform: scale(2); /* Opera */
+  padding: 10px;
+}
+
+// Might want to wrap a span around your checkbox text */
+.checkboxtext
+{
+
+  font-size: 110%;
+  display: inline;
+}
+
+    input[type=radio]:not(old) {
+    border: 0px;
+    width: 3em;
+    height: 2em;
+
+}
+
+</style>
+
+{% endblock css%}
+{% block js %}
+
+<script type="text/javascript">
+ 
+ $(document).ready(function() {
+    
+    $('#questionAnswersTable').DataTable({
+      "searching": false,      
+      "paging": false   ,
+       "ordering": false,
+ "bInfo" : false,       
+    });
+    
+    var laptopOrBrowser = /iPhone|Android|Trident/.test(navigator.userAgent);   
+    
+    $("#laptopOrBrowser").val(laptopOrBrowser);    
+
+  });
+  
+  function processCancel(obj){
+  
+      $("#prevQuestionFlag").val("1");
+
+      $("#smellSurveyForm").attr('action','/smellSurvey/administerQuestionnaire/');          
+
+      $("#smellSurveyForm").submit();
+  
+  }
+
+  function displayAdministration(obj){
+  
+      $("#smellSurveyForm").attr('action','/smellSurvey/displayAdministration/');          
+
+      $("#smellSurveyForm").submit();
+  
+  }  
+
+  function submitRestart(obj){
+  
+      $("#smellSurveyForm").attr('action','/smellSurvey/submitRestart/');          
+
+      $("#smellSurveyForm").submit();
+  
+  }  
+
+  function administerQuestionnaire(obj){
+  
+       objId = obj.id;
+   
+       data = objId.split("-");
+   
+       if (data.length > 0){
+   
+	  sectionId = data[1];
+   
+       }
+   
+      $("#sectionId").val(sectionId);  
+      
+      $("#prevQuestionId").val("0");  
+      
+      <!--alert($("#navigateSectionFlag").val());-->
+
+      $("#smellSurveyForm").attr('action','/smellSurvey/administerQuestionnaire/');          
+
+      $("#smellSurveyForm").submit();
+  
+  }  
+
+</script>
+
+{% endblock js %}
+
+{% block content %}
+
+<form method = "post" id = "smellSurveyForm" name = "smellSurveyForm" action="/smellSurvey/submitAdministerQuestionnaire/">
+ 
+ {% csrf_token %} 
+ 
+ <input type="hidden" name="laptopOrBrowser" id ="laptopOrBrowser" value = ""/>  
+ 
+ <input type="hidden" name="studyId" id ="studyId" value = "{{study.id}}"/>
+ <input type="hidden" name="siteId" id ="siteId" value = "{{site.id}}"/>
+ 
+ <input type="hidden" name="questionnaireId" id ="questionnaireId" value = "{{questionnaire.id}}"/>
+ <input type="hidden" name="administratorId" id ="administratorId" value = "{{administrator.id}}"/>
+ 
+ <input type="hidden" name="prevQuestionFlag" id ="prevQuestionFlag" value = "0"/>
+
+ <input type="hidden" name="patientId" id ="patientId" value = "{{patient.id}}"/>
+ <input type="hidden" name="administrationId" id ="administrationId" value = "{{administration.id}}"/>
+ 
+ <input type="hidden" name="prevQuestionId" id ="prevQuestionId" value="{{prevQuestion.id}}"/>
+ 
+ <input type="hidden" name="prevQuestionAnswerId" id ="prevQuestionAnswerId" value="{{prevQuestionAnswer.id}}"/>
+ <input type="hidden" name="prevSectionId" id ="prevSectionId" value="{{prevSection.id}}"/>
+ 
+ <!--<input type="hidden" name="sectionId" id ="sectionId" value=""/> -->
+ <input type="hidden" name="questionId" id ="questionId" value="{{questionObj.question.id}}"/>
+ 
+ <input type="hidden" name="questionAnswerId" id ="questionAnswerId" value="{{questionAnswer.id}}"/>
+ <input type="hidden" name="sectionId" id ="sectionId" value="{{section.id}}"/>
+  <input type="hidden" value="1" name="backToQuestionnaireFlag" id ="backToQuestionnaireFlag"/>
+ 
+ <!--<input type="hidden" name="navigateSectionFlag" id ="navigateSectionFlag" value="0"/> -->
+ 
+ <input type="hidden" name="upinId" id ="upinId" value = "{{upinId}}"/>
+ 
+<div class="row">  
+
+ <div class="col-lg-4">
+
+    <p>	
+	
+      <div class="list-group">
+	 
+	 {% for section in sections %}
+	  
+	    {% if section.id != questionObj.question.section.id %}<a href="#" id="section-{{section.id}}" name="section-{{section.id}}" onclick = "javascript:administerQuestionnaire(this);" class="list-group-item list-group-item-action" style="height:30px;vertical-align:middle;line-height:20px;margin-top=0px;" >{% else %}<a href="#" id="section-{{section.id}}" name="section-{{section.id}}" class="list-group-item list-group-item-action active" style="height:30px;vertical-align:middle;line-height:20px;margin-top=0px;" disabled>{% endif %}{{section.name}}</a>
+	  
+	  {% endfor %}	
+	  
+	  
+       </div>
+	  
+     </p>
+     
+    <p>
+ 
+      <div style="text-align:center;background-color: rgb(175, 232, 249);font-size:22px;" id="reviewDiv">
+	  <a href="#" onclick="javascript:displayAdministration(this);">Click to Review</a> 
+      </div> 
+ 
+    </p>     
+
+  </div> 
+
+  <div class="col-lg-8"> 
+    
+     <div class="jumbotron jumbotron-fluid" > 	
+	<!--<p>     -->
+	    <div class="container text-center" style="background-color:#D6D3D3;border-radius: 15px; ">	
+		    <h2>			
+		      {{questionObj.question}}
+		    </h2>
+	    </div>
+	<!--</p>-->
+	
+	<div style="text-align:left;">
+    	    <p>
+
+		<div class="table-responsive" > 
+		  <table id="questionAnswersTable" class="display" cellspacing="0" width="100%">
+		   <thead>
+		      <tr>
+			<th width="5%" style="text-align:center;">Select</a></th>
+			<th width="55%">Answer</a></th>	
+			<th width="40%">Answer Text</a></th>		
+		      </tr>
+		   </thead>
+		   <tbody>
+		   {% for questionAnswerObj in questionObj.questionAnswerObjList %}
+
+			<tr>
+			  <td> {% if questionAnswerObj.questionAnswer.questionAnswerType.name == "multiple choice" %} 
+			  
+			  <span class="checkboxtext">
+
+			  <input type="checkbox" id="questionAnswer-{{ questionAnswerObj.questionAnswer.id }}" name="questionAnswer-{{ questionAnswerObj.questionAnswer.id }}" value ="{{ questionAnswerObj.questionAnswer.id }}" {% if questionAnswerObj.isAnswered %} checked {% endif %} autocomplete="off" /> 
+			  
+			  </span>
+
+			  
+			  {% elif questionAnswerObj.questionAnswer.questionAnswerType.name == "single choice" %} 
+			  
+			  <input type="radio" id="questionAnswer-{{ questionObj.questionAnswer.id }}" name="questionAnswer-{{ questionObj.question.id }}" value ="{{ questionAnswerObj.questionAnswer.id }}"  {% if questionAnswerObj.isAnswered %} checked {% endif %}  autocomplete="off" />
+
+			  {% else %} 
+			  
+			  <input type="hidden" id="questionAnswer-{{ questionAnswerObj.questionAnswer.id }}" name="questionAnswer-{{ questionAnswerObj.questionAnswer.id }}" value ="{{ questionAnswerObj.questionAnswer.id }}" />
+			  
+			  {% endif%}
+			   
+			  </td>
+			  
+			  <td> 
+			  
+			   <font size="4">{{ questionAnswerObj.questionAnswer.text }}</font>
+			   
+			  </td>
+			   
+			  <td>
+			  
+			  {% if questionAnswerObj.questionAnswer.questionAnswerDataType.name == "integer" %} 
+			  
+			    <input type="number" id="questionAnswerText-{{ questionAnswerObj.questionAnswer.id }}" name="questionAnswerText-{{ questionAnswerObj.questionAnswer.id }}" value ="{{questionAnswerObj.questionAnswerInstance.answerText}}" /> 
+			  
+			  {% elif questionAnswerObj.questionAnswer.questionAnswerDataType.name == "integer_and_timeunit" %} 
+			  
+			    <input type="number" id="questionAnswerText-{{ questionAnswerObj.questionAnswer.id }}" name="questionAnswerText-{{ questionAnswerObj.questionAnswer.id }}" value ="{{questionAnswerObj.questionAnswerInstance.answerText}}" /> &nbsp;&nbsp;
+			    
+			   <select class="form-control" name="questionAnswerText2-{{questionAnswerObj.questionAnswer.id}}" id="questionAnswerText2-{{questionAnswerObj.questionAnswer.id}}" >
+	       
+			     <option value = "" id="questionAnswerTimeUnitDefaultOptionId" name="questionAnswerTimeUnitDefaultOptionId">-- Select --</option>
+
+			       {% for questionAnswerTimeUnit in questionAnswerObj.questionAnswerTimeUnitList %}
+			       
+			       <option value = "{{ questionAnswerTimeUnit.text }}" {% if questionAnswerTimeUnit.text == questionAnswerObj.questionAnswerInstance.answerText2 %} selected {% endif %} >{{questionAnswerTimeUnit.text}}</option>
+			       
+			      {% endfor %}
+
+			   </select> 			    
+
+			  {% elif questionAnswerObj.questionAnswer.questionAnswerDataType.name == "range" %} 
+			  
+			    <input type="number" id="questionAnswerText-{{ questionAnswerObj.questionAnswer.id }}" name="questionAnswerText-{{ questionAnswerObj.questionAnswer.id }}" value ="{{questionAnswerObj.questionAnswerInstance.answerText}}" {% if questionAnswerObj.questionAnswer.questionAnswerRangeLower != 0 %} min = {{questionAnswerObj.questionAnswer.questionAnswerRangeLower}} {% endif %} {% if questionAnswerObj.questionAnswer.questionAnswerRangeUpper != 0 %} max = {{questionAnswerObj.questionAnswer.questionAnswerRangeUpper}} {% endif %}/> 
+			  
+			  {% elif questionAnswerObj.questionAnswer.questionAnswerDataType.name == "text" %} 
+			  
+			    <input type="text" id="questionAnswerText-{{ questionAnswerObj.questionAnswer.id }}" name="questionAnswerText-{{ questionAnswerObj.questionAnswer.id }}" value ="{{questionAnswerObj.questionAnswerInstance.answerText}}"/>
+
+			  {% elif questionAnswerObj.questionAnswer.questionAnswerDataType.name == "datetime" %} 
+			  
+			    <input type="date" id = "questionAnswerText-{{questionAnswerObj.questionAnswer.id}}" name = "questionAnswerText-{{questionAnswerObj.questionAnswer.id}}" value = "{{questionAnswerObj.questionAnswerInstance.answerText}}" max = "{{currentDate}}" placeholder="MM/DD/YYYY"></input>
+			    
+			    {% elif questionAnswerObj.questionAnswer.questionAnswerDataType.name == "choice" %} 
+			  
+			   <select class="form-control" id="questionAnswerText-{{ questionAnswerObj.questionAnswer.id }}" name="questionAnswerText-{{ questionAnswerObj.questionAnswer.id }}" >
+	       
+			     <option value = "" id="questionAnswerChoiceDefaultOptionId" name="questionAnswerChoiceDefaultOptionId">-- Select --</option>
+
+			       {% for questionAnswerChoice in questionAnswerObj.questionAnswerChoiceList %}
+			       
+			       <option value = "{{ questionAnswerChoice.text }}" {% if questionAnswerChoice.text == questionAnswerObj.questionAnswerInstance.answerText %} selected {% endif %} >{{questionAnswerChoice.text}}</option>
+			       
+			      {% endfor %}
+
+			   </select>
+			   
+			  {% elif questionAnswerObj.questionAnswer.questionAnswerDataType.name == "choice_and_datetime" %} 
+			  
+			   <select class="form-control" id="questionAnswerText-{{ questionAnswerObj.questionAnswer.id }}" name="questionAnswerText-{{ questionAnswerObj.questionAnswer.id }}" >
+	       
+			     <option value = "" id="questionAnswerChoiceDefaultOptionId" name="questionAnswerChoiceDefaultOptionId">-- Select --</option>
+
+			       {% for questionAnswerChoice in questionAnswerObj.questionAnswerChoiceList %}
+			       
+			       <option value = "{{ questionAnswerChoice.text }}" {% if questionAnswerChoice.text == questionAnswerObj.questionAnswerInstance.answerText %} selected {% endif %} >{{questionAnswerChoice.text}}</option>
+			       
+			      {% endfor %}
+
+			   </select> 
+			   
+			   &nbsp;&nbsp;
+			   
+			   <input type="date" id="questionAnswerText2-{{ questionAnswerObj.questionAnswer.id }}" name="questionAnswerText2-{{ questionAnswerObj.questionAnswer.id }}" value = "{{questionAnswerObj.questionAnswerInstance.answerText2}}" placeholder="MM/DD/YYYY"></input>
+			  {% endif %}</td>
+			  
+			</tr>
+
+		     {% endfor %}
+		   </tbody>
+		  </table>
+		</div>
+		
+	   </p>
+
+      <p class="text-center">
+      
+	<button type="submit" class="btn btn-primary btn-lg" value = "0" name = "submitButton" id = "submitButton" onclick = "javascript:processCancel(this);" {% if prevQuestion == '' %} disabled {% endif %}>Previous</button>&nbsp;&nbsp;&nbsp;
+	<button type="submit" class="btn btn-danger btn-lg" value = "1" name = "submitButton" id = "submitButton" >Next</button>     
+      </p>
+  </div> 
+  </div>
+  </div>
+ 
+</div>
+      
+ <!--</div>-->
+ 
+</form>
+{% endblock content %}

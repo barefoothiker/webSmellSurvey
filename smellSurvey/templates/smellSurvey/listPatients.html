@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block css %}
+<link rel="stylesheet" type="text/css" href="/static/css/default.css">
+<!-- <link rel="stylesheet" type="text/css" href="/static/css/nouislider.css"> -->
+<!-- div.demo { padding: 10px !important; }; -->
+{% endblock css%}
+{% block js %}
+
+<script type="text/javascript">
+
+  function submitAddPatient(obj){ 
+  
+      $("#patientListForm").attr('action','/smellSurvey/addPatient/');     
+
+      $("#patientListForm").submit();
+
+  } 
+
+  function submitDeletePatients(obj){ 
+  
+      $("#patientListForm").attr('action','/smellSurvey/submitDeletePatients/');     
+
+      $("#patientListForm").submit();
+
+  } 
+
+  function submitPatientLink(obj){ 
+  
+      objId = obj.id;
+    
+      data = objId.split("-");    
+
+      patientId = data[1];
+    
+      $("#patientId").val(patientId);
+
+      $("#patientListForm").attr('action','/smellSurvey/editPatient/');          
+
+      $("#patientListForm").submit();
+
+  }
+  
+  $(document).ready(function() {
+    $('#patientsListTable').DataTable();
+
+  } );
+
+</script>
+
+{% endblock js %}
+
+{% block content %}
+
+<!-- /.row -->
+<div class="row">
+  <div class="col-lg-12">
+    <h1 class="page-header">Study Links</h1>
+  </div>
+  <!-- /.col-lg-12 -->
+</div>
+<!-- /.row -->
+<form method = "post" id = "patientListForm" name = "patientListForm" action="/smellSurvey/editPatient/">
+ {% csrf_token %} 
+ <input type="hidden" value="" name="patientId" id ="patientId"/>
+ <div class="row">
+  <div class="col-lg-12">
+    <div class="panel panel-primary">
+      <div class="panel-heading">
+        Select a link from the list of study links
+      </div>
+      <!-- /.panel-heading -->
+      <div class="panel-body" >
+      {% if messages %}
+	<ul class="messages">
+        {% for message in messages %}
+          <li{% if message.tags %} class="{{ message.tags }}"{% endif %}><font color="red">{{ message }}</font></li>
+        {% endfor %}
+	</ul>
+      {% endif %}
+        <div class="table-responsive" >
+	  <table id="patientsListTable" class="display" cellspacing="0" width="100%">	  	  
+	   <thead>
+	      <tr >
+		<th>Select</th>		
+		<th>Name</th>		
+		<th>Study</th>	
+		<th>Study Link</th>	
+              </tr>
+           </thead>
+           <tbody>
+           {% for patient in patientsList %}
+	   
+             <tr>
+               <td>
+		  <div class="checkbox">
+		    <label>
+		      <input type="checkbox" value="{{patient.id}}" name ="selectedPatientId" id ="selectedPatientId" >
+		    </label>
+		  </div>
+	       </td>
+
+	       <td> <a id = "patientLink-{{patient.id}}" href="#" onclick ="javascript:submitPatientLink(this);"> {{ patient.user.username}} </a> </td>
+	       <td> 
+		     {{ patient.defaultStudy }}
+		</td>
+	       <td> 
+		     <a href = "http://{{hostname}}/?surveyLink={{patient.surveyLink}}"> http://{{hostname}}/?surveyLink={{patient.surveyLink}}</a>
+		</td>
+
+	       </tr>
+           {% endfor %}
+           </tbody>
+          </table>
+        </div>
+        <!-- /.table-responsive -->
+      </div>
+      <!-- /.panel-body -->
+    </div>
+    <!-- /.panel -->
+  </div>
+  <!-- /.col-lg-12 -->
+ </div>
+ <!-- /.row -->
+{% if not surveyUser.role.isTester %}
+
+<div class="row">
+  <div class="col-lg-12">
+    <p class="text-center">
+      <button type="submit" class="btn btn-primary btn-lg" value = "1" name = "submitButton" id = "submitButton" onclick ="javascript:submitDeletePatients(this);">Delete Selected Links</button>      
+      <button type="submit" class="btn btn-danger btn-lg" value = "1" name = "submitButton" id = "submitButton" onclick ="javascript:submitAddPatient(this);">Add Survey Link</button>     
+    </p>
+  </div>
+  <!-- /.col-lg-12 -->
+ </div>
+{% endif %}
+</form>
+{% endblock content %}

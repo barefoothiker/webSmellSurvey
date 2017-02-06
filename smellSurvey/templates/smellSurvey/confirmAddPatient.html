@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block css %}
+
+{% endblock css%}
+{% block js %}
+<script type="text/javascript">
+
+$(document).ready(function(){
+});
+
+</script>
+{% endblock js %}
+{% block content %}
+<form action="/smellSurvey/landing/"  enctype="multipart/form-data" method = "post" id = "confirmForm" >
+<div class="row">
+  <div class="col-lg-12">
+    <div class="panel-body">
+      <div class="">
+        <div class="row jumbotron" style = "text-align:left;">
+	  <p> The survey link has been successfully created. You can navigate to the survey by clicking this link: <a href="http://{{hostname}}/?surveyLink={{patient.surveyLink}}" >{{hostname}}/?surveyLink={{patient.surveyLink}}</a>.</p>
+	  <p>You can return to the survey link list screen by clicking <a href = "/smellSurvey/listPatients/">here.</a></p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- /.col-lg-12 -->
+</div>
+</form>
+<!-- /.row -->
+{% endblock content %}

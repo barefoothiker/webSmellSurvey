@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block css %}
+<link rel="stylesheet" type="text/css" href="/static/css/default.css">
+{% endblock css%}
+{% block js %}
+
+<script type="text/javascript">
+ 
+ $(document).ready(function() {
+    
+  });
+
+  function processCancel(obj){
+  
+      $("#addRoleForm").attr('action','/smellSurvey/displayRoleList/');          
+
+      $("#addRoleForm").submit();
+  
+  }
+
+</script>
+
+{% endblock js %}
+
+{% block content %}
+
+<!-- /.row -->
+<div class="row">
+  <div class="col-lg-12">
+    <h1 class="page-header">Add Role</h1>
+  </div>
+  <!-- /.col-lg-12 -->
+</div>
+<form method = "post" id = "addRoleForm" name = "addRoleForm" action="/smellSurvey/submitAddRole/">
+ {% csrf_token %} 
+ <div class="row">  
+    <div class="col-lg-12">
+        <div class="panel panel-primary">  
+      <div class="panel-heading">
+	 <h4 class="panel-title">
+	   <a data-toggle="collapse" data-parent="#accordion3" href="#rolesPanel">
+	   Add Role&nbsp;(  Please click to toggle this panel. )
+	   </a>
+	 </h4>
+      </div>
+      <div id="rolesPanel" class="panel-collapse collapse in">
+	<div class="panel-body">  
+    
+	  <div class="form-group">
+	      <label>Name:</label>
+	      <input type="text" class="form-control" id = "roleName" name = "roleName" value="" required/>
+	      <p class="help-block">Role name.</p>
+	  </div>    
+    
+	  <div class="form-group">
+	      <label>Description:</label>
+	      <input type="text" class="form-control" id = "roleDescription" name = "roleDescription" value="" required/>
+	      <p class="help-block">Role description.</p>
+	  </div>   
+
+	  <div class="form-group">
+	      <label>Super User?:<input type="radio" class="form-control" id = "roleLevel1" name = "roleLevel" value="1" required/></label>
+	      
+	      <p class="help-block">Super user will all admin rights.</p>
+	  </div>  
+
+	  <div class="form-group">
+	      <label>Administrator?:<input type="radio" class="form-control" id = "roleLevel2" name = "roleLevel" value="2" required/></label>
+	      
+	      <p class="help-block">An administrator can administer patients.</p>
+	  </div>  
+
+	  <div class="form-group">
+	      <label>Survey User?:<input type="radio" class="form-control" id = "roleLevel3" name = "roleLevel" value="3" required/></label>
+	      
+	      <p class="help-block">A survey user can only fill in questionnaire.</p>
+	  </div>  
+
+	  <div class="form-group">
+	      <label>Tester?:<input type="radio" class="form-control" id = "roleLevel3" name = "roleLevel" value="4" required/></label>
+	      
+	      <p class="help-block">A tester can fill in questionnaire and view setup data but not modify it.</p>
+	  </div>  
+    
+	</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% if not surveyUser.role.isTester %}
+<!-- /.row -->
+    <p class="text-center">
+      <button type="input" class="btn btn-primary btn-lg" value = "0" name = "submitButton" id = "submitButton" onclick = "javascript:window.history.back();">Cancel</button>&nbsp;&nbsp;&nbsp;    
+      <button type="submit" class="btn btn-danger btn-lg" value = "1" name = "submitButton" id = "submitButton" >Submit</button>     
+    </p>
+{% endif %}    
+    
+</form>
+{% endblock content %}

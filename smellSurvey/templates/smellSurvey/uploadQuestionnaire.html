@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% block css %}
+<!--<link rel="stylesheet" type="text/css" href="/static/css/default.css">-->
+<!-- <link rel="stylesheet" type="text/css" href="/static/css/nouislider.css"> -->
+<!-- div.demo { padding: 10px !important; }; -->
+{% endblock css%}
+{% block js %}
+
+<script type="text/javascript">
+
+  $(document).ready(function() {
+    
+    $('#questionnairesTable').DataTable();
+
+  });
+
+  function displayAnalysisDetail(obj){
+      objId = obj.id;
+
+      data = objId.split("-");
+
+      if (data.length > 0){
+
+         analysisDetailId = data[1];
+
+      }
+
+    $("#analysisDetailId").val(analysisDetailId);
+
+    $("#analyzeFileSelectForm").attr("action","/rnaseq/displayAnalysisDetail/");
+    
+    $("#analyzeFileSelectForm").submit();
+  }
+
+  function downloadAnalysisDetail(obj){
+      objId = obj.id;
+
+      data = objId.split("-");
+
+      if (data.length > 0){
+
+         analysisDetailId = data[1];
+
+      }
+
+    $("#analysisDetailId").val(analysisDetailId);
+
+    $("#downloadAllData").val("1");
+
+    $("#analyzeFileSelectForm").attr("action","/rnaseq/downloadData/");
+    
+    $("#analyzeFileSelectForm").submit();
+  }
+
+  function submitQuestionnaire(obj){
+  
+      objId = obj.id;
+
+      data = objId.split("-");
+
+      if (data.length > 0){
+
+         questionnaireId = data[1];
+
+      }
+
+    $("#questionnaireId").val(questionnaireId);
+
+    $("#analyzeFileSelectForm").attr("action","/rnaseq/analyzeFileSelectColumns/")
+    
+    $("#analyzeFileSelectForm").submit();
+  }
+
+  function uploadPhenotypeFile(obj){
+  
+    $("#analyzeFileSelectForm").attr("action","/rnaseq/analyzeFileSelectColumns/");
+    
+    $("#analyzeFileSelectForm").submit();
+  }
+  
+
+  function displayQuestionnaire(obj){
+      objId = obj.id;
+
+      data = objId.split("-");
+
+      if (data.length > 0){
+
+         questionnaireId = data[1];
+
+      }
+
+    $("#questionnaireId").val(questionnaireId);
+    
+      $("#submitUploadQuestionnaireForm").attr("action","/smellSurvey/displayQuestionnaire/");    
+
+    $("#submitUploadQuestionnaireForm").submit();
+  }
+  
+  function deleteQuestionnaire(obj){
+      objId = obj.id;
+
+      data = objId.split("-");
+
+      if (data.length > 0){
+
+         questionnaireId = data[1];
+
+      }
+
+    $("#questionnaireId").val(questionnaireId);
+    
+    if(confirm('Please confirm if you would like to delete this questionnaire.')){
+
+      $("#submitUploadQuestionnaireForm").attr("action","/smellSurvey/deleteQuestionnaire/");
+  
+      $("#submitUploadQuestionnaireForm").submit();
+    }    
+
+  }  
+  
+</script>
+
+{% endblock js %}
+
+{% block content %}
+
+<form action="/smellSurvey/submitUploadQuestionnaire/" enctype="multipart/form-data" method="post" id = "submitUploadQuestionnaireForm" name = "submitUploadQuestionnaireForm" >
+ {% csrf_token %} 
+
+<div class="row">
+  <div class="col-lg-12">
+    <h1 class="page-header">Upload Questionnaire</h1>
+  </div>
+  <!-- /.col-lg-12 -->
+</div>
+<!-- /.row -->
+
+ <input type="hidden" value="{{questionnaire.id}}" name="questionnaireId" id ="questionnaireId"/>
+ <div class="row">
+  <div class="col-lg-12">
+      {% if messages %}
+      <p color="red">
+	<ul>
+	 {% for message in messages %}
+	   <li>       
+	     <font color = "red">{{message|safe}}</font>
+	   </li>   
+       {% endfor %}
+       </ul>
+      </p>
+      {% endif %}    
+  
+    <div class="panel panel-primary">
+      <div class="panel-heading">
+
+      	  <h4 class="panel-title">
+	    <a data-toggle="collapse" data-parent="#panels1" href="#questionnaireSelectPanel">
+	              Upload Questionnaire. (Click to toggle this panel.)
+	    </a>
+	  </h4>  
+
+      </div>
+      
+      
+      <!-- /.panel-heading -->
+      <div class="panel-body" >	  
+        <div id="questionnaireSelectPanel" class="panel-collapse collapse in" >        
+          <p>
+	    Please select the questionnaire file. This file needs to be a CSV file. You can either upload a new file or select from an existing file.
+	  </p>
+
+	  <p>
+	    <label>Questionnaire:</label>&nbsp;*
+	    <input class="form-control" name="questionnaireName" type="file" required> 
+	  </p>
+	  
+	  <p>
+	  <div class="form-group">
+	    <div class="text">
+	      <label>
+		<b>Questionnaire Name:&nbsp;</b>*
+	      </label>
+	      <input type = "text" id ="questionnaireNameCustom" name ="questionnaireNameCustom" value="" width = "200px;" required>
+	    </div>
+	    <p class="help-block">Please enter questionnaire name. Defaults to CSV file name.</p>
+	  </div> 
+        <!--</div>	-->
+
+	  </p>
+	  
+	  
+      </div>
+      <!-- /.panel-body -->
+    </div>
+    <!-- /.panel -->
+  </div>
+  <!-- /.col-lg-12 -->
+ </div>
+ <!-- /.row -->
+ 
+<p class="text-center">
+   <button type="submit" class="btn btn-primary btn-lg" value = "0" name = "submitButton" id="submitButton" onclick ="javascript:cancelUploadFile(this);">Cancel</button>      
+   <button type="submit" class="btn btn-danger btn-lg" value = "0" name = "submitButton" id="submitButton" onclick ="javascript:uploadQuestionnaire(this);">Submit</button>
+</p>  
+ 
+</form>
+{% endblock content %}

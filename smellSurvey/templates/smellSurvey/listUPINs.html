@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block css %}
+<link rel="stylesheet" type="text/css" href="/static/css/default.css">
+<!-- <link rel="stylesheet" type="text/css" href="/static/css/nouislider.css"> -->
+<!-- div.demo { padding: 10px !important; }; -->
+{% endblock css%}
+{% block js %}
+
+<script type="text/javascript">
+
+  function submitUPINLink(obj){ 
+  
+
+      objId = obj.id;
+    
+      data = objId.split("-");
+    
+      if (data.length > 0){
+
+         administrationId = data[1];
+    
+      } 
+    
+    $("#administrationId").val(administrationId);
+
+    $("#upinlistForm").submit();
+
+  }
+  
+  $(document).ready(function() {
+    $('#upinDataTable').DataTable();
+
+  } );
+
+</script>
+
+{% endblock js %}
+
+{% block content %}
+
+<!-- /.row -->
+<div class="row">
+  <div class="col-lg-12">
+    <h1 class="page-header">UPINS</h1>
+  </div>
+  <!-- /.col-lg-12 -->
+</div>
+<!-- /.row -->
+<form method = "post" id = "upinlistForm" name = "upinlistForm" action="/smellSurvey/displayAdministration/">
+ <input type="hidden" value="" name="administrationId" id ="administrationId"/>
+ <div class="row">
+  <div class="col-lg-12">
+    <div class="panel panel-primary">
+      <div class="panel-heading">
+        UPINS
+      </div>
+      <!-- /.panel-heading -->
+      <div class="panel-body" >
+      {% if messages %}
+	<ul class="messages">
+        {% for message in messages %}
+          <li{% if message.tags %} class="{{ message.tags }}"{% endif %}><font color="red">{{ message }}</font></li>
+        {% endfor %}
+	</ul>
+      {% endif %}
+        <div class="table-responsive" >
+
+	  <table id="upinDataTable" class="display" cellspacing="0" width="100%">	  	  
+	   <thead>
+	      <tr >
+		<th>UPIN id</a></th>
+		<th>Adminstration id</th>
+		<th>Site</th>
+		<th>Start</th>
+		<th>Stop</th>
+		<th>Instrument</th>
+                <th>Score Report</th>
+              </tr>
+           </thead>
+           <tbody>
+           {% for upinObj in upinObjList %}
+             <tr>
+               <td>  {{ upinObj.upin.id }} </a> </td>
+	       <td><a id = "scoreReportLink-{{upinObj.administration.id}}" href="#" onclick ="javascript:submitUPINLink(this);">{{ upinObj.administration.id}}</a></td>
+	       <td>{{ upinObj.administration.site}}</td>
+	       <td>{{ upinObj.administration.start}}</td>
+	       <td>{{ upinObj.administration.stop}}</td>
+	       <td>{{ upinObj.administration.instrument}}</td>
+               <td><button type="button" class="btn btn-primary" id = "upinButton-{{upinObj.upin.id}}" name = "upinButton-{{upinObj.upin.id}}" onclick ="javascript:submitUPINLink(this,2);">Score Report</button></td>
+             </tr>
+           {% endfor %}
+           </tbody>
+          </table>
+        </div>
+        <!-- /.table-responsive -->
+      </div>
+      <!-- /.panel-body -->
+    </div>
+    <!-- /.panel -->
+  </div>
+  <!-- /.col-lg-12 -->
+ </div>
+ <!-- /.row -->
+</form>
+{% endblock content %}

@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block css %}
+<link rel="stylesheet" type="text/css" href="/static/css/default.css">
+{% endblock css%}
+{% block js %}
+
+<script type="text/javascript">
+ 
+ $(document).ready(function() {
+  
+  function processCancel(obj){
+  
+      $("#editInstrumentAdministratorForm").attr('action','/smellSurvey/listAdministrators/');          
+
+      $("#editInstrumentAdministratorForm").submit();
+  
+  }
+
+</script>
+
+{% endblock js %}
+
+{% block content %}
+
+<!-- /.row -->
+<div class="row">
+  <div class="col-lg-12">
+    <h1 class="page-header">Edit Tester ({{tester.user.username}})</h1>
+  </div>
+  <!-- /.col-lg-12 -->
+</div>
+<form method = "post" id = "editTesterForm" name = "editTesterForm" action="/smellSurvey/submitEditTester/">
+ {% csrf_token %}
+<input type="hidden" id = "testerId" name = "testerId" value = "{{tester.id}}"/>
+ <div class="row">  
+    <div class="col-lg-12"> 
+      <div class="panel panel-primary">
+	<div class="panel-heading">
+	    <h4 class="panel-title">
+	      <a data-toggle="collapse" data-parent="#panels1" href="#editTesterPanel">
+		Edit Tester ({{tester.user.username}}). (Click to toggle this panel.)
+	      </a>
+	    </h4>  
+	</div>
+   
+	<div class="panel-body">
+	 <div id="editAdministratorPanel" class="panel-collapse collapse in" >      
+	      
+	  <div class="form-group">
+	    <label>Email:</label>&nbsp;<input type = "text" id = "administratorEmail" name = "administratorEmail" value = "{{tester.user.email}}" required/>
+	    <p class="help-block">Email. </p>
+	  </div>  
+    
+	  <div class="form-group">
+	      <label>Password:</label>
+	      <input type="password" class="form-control" id = "administratorPassword" name = "administratorPassword" value = "{{tester.user.password}}" required/>
+	      <p class="help-block">Please enter password.</p>
+	  </div> 
+	  
+      </div>
+    </div>
+  
+ </div>
+ <!-- /.row -->
+ <!-- /.row -->
+{% if not surveyUser.role.isTester %} 
+<div class="row">
+  <div class="col-lg-12">
+    <p class="text-center">
+      <button type="submit" class="btn btn-primary btn-lg" value = "0" name = "submitButton" id = "submitButton" onclick = "javascript:processCancel(this);">Cancel</button>&nbsp;&nbsp;&nbsp;
+      <button type="submit" class="btn btn-danger btn-lg" value = "1" name = "submitButton" id = "submitButton" >Submit</button>     
+    </p>
+  </div>
+  <!-- /.col-lg-12 -->
+ </div>
+ <!-- /.row -->
+{% endif %}
+</form>
+{% endblock content %}

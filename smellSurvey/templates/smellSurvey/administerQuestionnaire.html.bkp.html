@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block css %}
+<link rel="stylesheet" type="text/css" href="/static/css/default.css">
+{% endblock css%}
+{% block js %}
+
+<script type="text/javascript">
+ 
+ $(document).ready(function() {
+    
+    $('#questionAnswersTable').DataTable({
+      paging: false   
+    });
+
+  });
+  
+  function processCancel(obj){
+  
+      $("#addInstrumentAdministratorForm").attr('action','/smellSurvey/administerQuestionnaire/');          
+
+      $("#addInstrumentAdministratorForm").submit();
+  
+  }
+
+</script>
+
+{% endblock js %}
+
+{% block content %}
+
+<!-- /.row -->
+<div class="row">
+  <div class="col-lg-12">
+    <h1 class="page-header">Smell Survey</h1>
+  </div>
+</div>
+<form method = "post" id = "smellSurveyForm" name = "smellSurveyForm" action="/smellSurvey/submitAdministerQuestionnaire/">
+ 
+ {% csrf_token %} 
+ 
+ <input type="hidden" name="studyId" id ="studyId" value = "{{study.id}}"/>
+ <input type="hidden" name="siteId" id ="siteId" value = "{{site.id}}"/>
+ 
+ <input type="hidden" name="questionnaireId" id ="questionnaireId" value = "{{questionnaire.id}}"/>
+ <input type="hidden" name="administratorId" id ="administratorId" value = "{{administrator.id}}"/>
+ 
+ <input type="hidden" name="patientId" id ="patientId" value = "{{patient.id}}"/>
+ <input type="hidden" name="administrationId" id ="administrationId" value = "{{administration.id}}"/>
+ 
+ <input type="hidden" name="prevQuestionId" id ="prevQuestionId" value="{{prevQuestion.id}}"/>
+ 
+ <input type="hidden" name="prevQuestionAnswerId" id ="prevQuestionAnswerId" value="{{prevQuestionAnswer.id}}"/>
+ <input type="hidden" name="prevSectionId" id ="prevSectionId" value="{{prevSection.id}}"/>
+ 
+ <input type="hidden" name="questionId" id ="questionId" value="{{question.id}}"/>
+ 
+ <input type="hidden" name="questionAnswerId" id ="questionAnswerId" value="{{questionAnswer.id}}"/>
+ <input type="hidden" name="sectionId" id ="sectionId" value="{{section.id}}"/>
+ 
+ <div class="row">  
+    <div class="col-lg-12"> 
+      <div class="panel panel-primary">
+	  <div class="panel-heading">
+	       <h4 class="panel-title">
+		 <a data-toggle="collapse" data-parent="#accordion3" href="#infoPanel">
+		 Smell Survey Information&nbsp;(  Please click to toggle this panel. )
+		 </a>
+	       </h4>
+	  </div>
+	  <div id="infoPanel" class="panel-collapse collapse">
+	    <div class="panel-body">
+
+	      <div class="form-group">
+		  <label>Section:</label>&nbsp;{{section.name}}
+	      </div> 
+
+	      <div class="form-group">
+		  <label>Previous Question:</label>&nbsp;{{prevQuestion}}
+	      </div> 
+
+	      <div class="form-group">
+		  <label>Previous Question Answer:</label>&nbsp;{{prevQuestionAnswer}}
+	      </div> 
+	      
+	      <div class="form-group">
+		  <label>Previous Question Answer Text:</label>&nbsp;{{prevQuestionAnswerText}}
+	      </div> 	      
+	      
+	    </div>
+
+	  </div>
+
+       </div>
+
+   </div>
+ </div>
+
+
+<div class="row">  
+    <div class="col-lg-12"> 
+      <div class="panel panel-primary">
+	<div class="panel-heading">
+	    <h4 class="panel-title">
+	      <a data-toggle="collapse" data-parent="#accordion3" href="#surveyPanel">
+	      Smell Survey Section {{section.name}}&nbsp;(  Please click to toggle this panel. )
+	      </a>
+	    </h4>
+	  </div>
+	  <div id="surveyPanel" class="panel-collapse collapse in">
+	    <div class="panel-body">
+	    
+	      <div class="form-group">
+		  <label>Section:</label>&nbsp;{{section}}
+	      </div> 
+
+	      <div class="form-group">
+		  <label>Question:</label>&nbsp;{{question}}
+	      </div> 
+
+	      <div class="form-group">
+		  <label>Answer:</label>&nbsp;
+		    <div class="table-responsive" >
+		      <table id="questionAnswersTable" class="display" cellspacing="0" width="100%">
+		       <thead>
+			  <tr>
+			    <th>Select</a></th>
+			    <th>Answer</a></th>	
+			    <th>Answer Text</a></th>		
+			  </tr>
+		       </thead>
+		       <tbody>
+		       {% for questionAnswer in questionAnswers %}
+
+			    <tr>
+			      <td> {% if questionAnswer.questionAnswerType.name == "Multiple Choice" %} 
+			      <input type="checkbox" id="questionAnswer-{{ questionAnswer.id }}" name="questionAnswer-{{ questionAnswer.id }}" value ="{{ questionAnswer.id }}"/> 
+			      {% elif questionAnswer.questionAnswerType.name == "boolean" %} 
+			      <input type="radio" id="questionAnswer-{{ question.id }}" name="questionAnswer-{{ question.id }}" value ="{{ questionAnswer.id }}"/>{% else %} &nbsp; {% endif%}</td>
+			      <td> {% if questionAnswer.questionAnswerType.name == "DateTime" %} <input type="date" id = "questionAnswerDate-{{questionAnswer.id}}" name = "questionAnswerDate-{{questionAnswer.id}}" value = "" ></input>{% else %} {{ questionAnswer.text }} {% endif %}</td>
+			      <td> {% if questionAnswer.questionAnswerType.name == "Integer" %} <input type="number" id="questionAnswerText-{{ questionAnswer.id }}" id="questionAnswerText-{{ questionAnswer.id }}" value =""/> {% elif questionAnswer.questionAnswerType.name == "plain text" %} <input type="text" id="questionAnswerText-{{ questionAnswer.id }}" id="questionAnswerText-{{ questionAnswer.id }}" value =""/> {% endif %}</td>
+			    </tr>
+
+			 {% endfor %}
+		       </tbody>
+		      </table>
+		    </div>
+	      </div> 
+	     	      
+	  </div>
+       </div>
+       
+      </div>
+      
+      <p class="text-center">
+	<button type="submit" class="btn btn-primary btn-lg" value = "0" name = "submitButton" id = "submitButton" onclick = "javascript:processCancel(this);">Previous</button>&nbsp;&nbsp;&nbsp;
+	<button type="submit" class="btn btn-danger btn-lg" value = "1" name = "submitButton" id = "submitButton" >Next</button>     
+      </p>
+   </div>
+ </div>
+</div>
+
+</form>
+{% endblock content %}

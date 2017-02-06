@@ -1,0 +1,3794 @@
+from django.contrib.auth.decorators import login_required
+
+from django.template import RequestContext
+from django.shortcuts import render_to_response
+
+from django.http import HttpResponseRedirect
+
+from django.http import HttpResponse
+
+from smellSurvey.models import *
+from smellSurvey.smellSurveyObjs import *
+from smellSurvey.smellSurveyConstants import *
+
+from django.contrib.auth import authenticate
+from django.contrib.auth import login
+
+import numpy as np
+
+import os, sys, traceback
+
+#from neo4j.v1 import GraphDatabase, basic_auth
+
+from django.conf import settings
+import numpy
+import datetime
+import os.path
+
+import csv
+
+import random
+from random import randint
+
+#from django.utils.encoding import smart_unicode
+
+def register(request):
+    if request.method == 'POST':
+        form = UserCreationForm(request.POST)
+        if form.is_valid():
+            new_user = form.save()
+            return HttpResponseRedirect("/registration/")
+    else:
+        form = UserCreationForm()
+    return render_to_response("registration/register.html", {
+        'form': form,
+    })
+
+#@login_required
+def landing(request):
+
+    urlUserName = request.GET.get("userName","" )
+
+    if urlUserName != '':
+
+        urlUsers = User.objects.filter ( username = urlUserName )
+
+        if len(urlUsers) > 0:
+
+            user = urlUsers[0]
+
+            user.backend = 'django.contrib.auth.backends.ModelBackend'
+
+            login(request, user)
+    else:
+
+        print ( " user = " + str(request.user) + " anonymous " + str(request.user.is_anonymous))
+
+        if request.user and not request.user.is_anonymous():
+
+            user = request.user
+
+        else:
+
+            print ( " *** IN ELSE *** ")
+
+            return HttpResponseRedirect('/accounts/login')
+
+    study = ''
+
+    upins = []
+
+    newUPINID = 0
+
+    administrations = []
+
+    superUserRoles = Role.objects.filter(name = SUPER_USER_ROLE_NAME)
+
+    if len(superUserRoles) == 0:
+
+        return render_to_response('smellSurvey/landing.html', {
+
+            "user" : user,
+
+        },  RequestContext(request))
+
+    else:
+
+        superUserRole = superUserRoles[0]
+
+    surveyUsers = SurveyUser.objects.filter(user = user)
+
+    surveyUser = ''
+
+    print ( " num users = " + str(surveyUsers) )
+
+    if len(surveyUsers) > 0:
+
+        surveyUser = surveyUsers[0]
+
+        if surveyUser.role.isAdministrator:
+
+            administrators = Administrator.objects.filter(user = request.user)
+
+            if len(administrators) > 0:
+
+                surveyUser = administrators[0]
+
+                administrations = Administration.objects.filter(administrator = administrators[0])
+
+        elif surveyUser.role.isPatient:
+
+            patients = Patient.objects.filter(user = request.user)
+
+            if len(patients) > 0:
+
+                surveyUser = patients[0]
+
+                patient = surveyUser
+
+                study = ''
+
+                selectedStudyId = request.GET.get('studyId', 0)
+
+                if selectedStudyId != 0:
+
+                    study = Study.objects.get(pk = selectedStudyId)
+
+                else:
+
+                    study = patient.defaultStudy
+
+                study = patient.defaultStudy
+
+                upins = UPIN.objects.filter(patient = patient, study = study)
+
+                administrations = Administration.objects.filter( upin__in = upins)
+
+                notFound = True
+
+                newUPINID = 0
+
+                while notFound:
+
+                    newUPINID = randint(100001, 999999)
+
+                    upinCount = UPIN.objects.filter(upinId = newUPINID).count()
+
+                    if upinCount == 0:
+
+                        notFound = False
+
+    #print ( " surveyUser = " + str(    surveyUser.role   ) )
+
+    return render_to_response('smellSurvey/landing.html', {
+
+        "user" : user,
+        "surveyUser" : surveyUser,
+        "study" : study,
+        "upins" : upins,
+        "newUPINID" : newUPINID,
+        "administrations" : administrations,
+
+    },  RequestContext(request))
+
+
+@login_required
+def processLanding(request):
+
+    smellSurveyHomeButton = request.POST.get('smellSurveyHomeButton', "0")
+
+    if smellSurveyHomeButton == "0":
+        return home( request )
+    if smellSurveyHomeButton == "1":
+        return uploadQuestionnaire( request )
+    elif smellSurveyHomeButton == "2":
+        return listQuestionnaires( request )
+    elif smellSurveyHomeButton == "3":
+        return listSites ( request )
+    elif smellSurveyHomeButton == "4":
+        return listStudies ( request )
+    elif smellSurveyHomeButton == "5":
+        return listPatients ( request )
+    elif smellSurveyHomeButton == "6":
+        return listRoles ( request )
+    elif smellSurveyHomeButton == "7":
+        return listAdministrators ( request )
+    elif smellSurveyHomeButton == "8":
+        return selectSiteStudy ( request )
+    elif smellSurveyHomeButton == "9":
+        return listAdministrations ( request )
+    elif smellSurveyHomeButton == "10":
+        return listSuperUsers ( request )
+
+@login_required
+def uploadQuestionnaire(request):
+
+    try:
+
+        questionnaires = Questionnaire.objects.all()
+
+    except:
+
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/uploadQuestionnaire.html', {
+
+        "questionnaires":questionnaires,
+
+    },  RequestContext(request))
+
+@login_required
+def submitUploadQuestionnaire(request):
+
+    try:
+
+        questionnaireNameCustom = request.POST.get("questionnaireNameCustom","" )
+
+        errorFile = open("errorUpload.txt","w")
+
+        questionnaireFile = request.FILES["questionnaireName"]
+
+        if questionnaireNameCustom == "":
+
+            questionnaireNameCustom = questionnaireFile
+
+        print ( "questionnaireNameCustom = " + questionnaireNameCustom)
+
+        questionnaires = Questionnaire.objects.filter (name = questionnaireNameCustom)
+
+        allQuestionnaires = Questionnaire.objects.all()
+
+        messages = []
+
+        questionnaire = ""
+
+        if len(questionnaires) > 0:
+
+            messages.append("Questionnaire already exists. Please choose a different name.")
+
+            return render_to_response('smellSurvey/listQuestionnaires.html', {
+
+                "allQuestionnaires":questionnaires,
+
+                "messages": messages,
+
+            },  RequestContext(request))
+
+        else:
+
+            questionnaire = Questionnaire (name = questionnaireNameCustom, version = 1)
+
+            questionnaire.save()
+
+        data = questionnaireFile.read().decode()
+
+        dataLines = data.split("\r")
+
+        sectionSequence = 0
+
+        for index, dataLine in enumerate ( dataLines ) :
+            if index == 0:
+                continue
+
+            dataValues = dataLine.replace("\t","").replace("\n","").split(",")
+
+            #Question ID        Question Order  Section Question        Question Ontology - class and subclass  Question Ontology - individual  Answer ID       Answer Type (single choice, multiple choice, choice) select column      Answer  Answer Ontology individual      data type (integer, datetime, choice, choice_and_datetime, integer_and_timeunit, text) answer text 3rd column   range   choice  choice ontology Parent Question Parent Answer   required        PHI     Picture
+
+            if len(dataValues) < 19:
+
+                break
+
+            questionId = dataValues[0]
+            questionOrder = dataValues[1]
+            sectionName = dataValues[2]
+
+            questionText = dataValues[3]
+
+            print ( " ^^^^^^^^^^ for question ^^^^^^^^ " + str(questionText) )
+
+            questionOntologyClassSubClass = dataValues[4]
+            questionOntologyIndividual = dataValues[5]
+
+            questionAnswerId = dataValues[6]
+            questionAnswerTypeName = dataValues[7]
+
+            questionAnswerText = dataValues[8]
+
+            questionAnswerOntologyName = dataValues[9]
+
+            questionAnswerDataTypeName = dataValues[10]
+
+            questionAnswerTimeUnit = dataValues[11]
+
+            questionAnswerValueRange = dataValues[12]
+
+            questionAnswerChoices = dataValues[13]
+
+            questionAnswerChoiceOntologies = dataValues[14]
+
+            parentQuestionId = dataValues[15]
+
+            parentQuestionAnswerId = dataValues[16]
+
+            requiredFlag = dataValues[17]
+
+            phiFlag = dataValues[18]
+
+            pictureURL = dataValues[19]
+
+            questionAnswerRangeLower = 0
+            questionAnswerRangeUpper = 0
+
+            try:
+
+                if questionAnswerValueRange != '':
+
+                    questionAnswerValueRangeLimits = questionAnswerValueRange.split(" ")
+
+                    if len(questionAnswerValueRangeLimits) > 0:
+
+                        questionAnswerRangeLower = int(questionAnswerValueRangeLimits[0])
+
+                        questionAnswerRangeUpper = int(questionAnswerValueRangeLimits[1])
+
+            except:
+
+                print ( " error getting range values " )
+
+                pass
+
+            requiredFlag = True if requiredFlag == 'Y' else False
+            phiFlag =  True if phiFlag == 'Y' else False
+
+            ontologyTypeClassSubClasses = OntologyType.objects.filter ( name = "classSubClass")
+
+            ontologyTypeClassSubClass = ''
+
+            if len(ontologyTypeClassSubClasses) == 0:
+
+                ontologyTypeClassSubClass = OntologyType ( name = "classSubClass", description = "classSubClass description")
+
+                ontologyTypeClassSubClass.save()
+
+            else:
+
+                ontologyTypeClassSubClass = ontologyTypeClassSubClasses[0]
+
+            ontologyTypeIndividuals = OntologyType.objects.filter ( name = "Individual")
+
+            ontologyTypeIndividual = ''
+
+            if len(ontologyTypeIndividuals) == 0:
+
+                ontologyTypeIndividual = OntologyType ( name = "Individual", description = "Individual description")
+
+                ontologyTypeIndividual.save()
+
+            else:
+
+                ontologyTypeIndividual = ontologyTypeIndividuals[0]
+
+            questionAnswerTypes = QuestionAnswerType.objects.filter(name = questionAnswerTypeName)
+
+            questionAnswerType = ''
+
+            if len(questionAnswerTypes) > 0:
+
+                questionAnswerType = questionAnswerTypes[0]
+
+            else:
+
+                if questionAnswerTypeName != '':
+
+                    questionAnswerType = QuestionAnswerType(name = questionAnswerTypeName, description = questionAnswerTypeName)
+
+                    questionAnswerType.save()
+
+            questionAnswerDataTypes = QuestionAnswerDataType.objects.filter(name = questionAnswerDataTypeName)
+
+            questionAnswerDataType = ''
+
+            if len(questionAnswerDataTypes) > 0:
+
+                questionAnswerDataType = questionAnswerDataTypes[0]
+
+            else:
+
+                if questionAnswerDataTypeName != '':
+
+                    questionAnswerDataType = QuestionAnswerDataType(name = questionAnswerDataTypeName, description = questionAnswerDataTypeName)
+
+                    questionAnswerDataType.save()
+
+            sections = Section.objects.filter( questionnaire = questionnaire, name = sectionName)
+
+            section = ''
+
+            if len(sections) > 0:
+
+                section = sections[0]
+
+            else:
+
+                section = Section(name = sectionName, questionnaire = questionnaire, sequence = sectionSequence)
+
+                section.save()
+
+                sectionSequence = sectionSequence + 1
+
+            questionOntologyClassSubClasses = Ontology.objects.filter( name = questionOntologyClassSubClass, ontologyType = ontologyTypeClassSubClass )
+
+            questionOntologyClassSubClass = ''
+
+            if len(questionOntologyClassSubClasses) > 0:
+
+                questionOntologyClassSubClass = questionOntologyClassSubClasses[0]
+
+            else:
+
+                questionOntologyClassSubClass = Ontology(name = questionOntologyClassSubClass , ontologyType = ontologyTypeClassSubClass)
+
+                questionOntologyClassSubClass.save()
+
+            questionOntologyIndividuals = Ontology.objects.filter( name = questionOntologyIndividual, ontologyType = ontologyTypeIndividual )
+
+            questionOntologyIndividual = ''
+
+            if len(questionOntologyIndividuals) > 0:
+
+                questionOntologyIndividual = questionOntologyIndividuals[0]
+
+            else:
+
+                questionOntologyIndividual = Ontology(name = questionOntologyIndividual , ontologyType = ontologyTypeIndividual)
+
+                questionOntologyIndividual.save()
+
+            questionAnswerOntologies = Ontology.objects.filter( name = questionAnswerOntologyName, ontologyType = ontologyTypeIndividual)
+
+            questionAnswerOntology = ''
+
+            if len(questionAnswerOntologies) > 0:
+
+                questionAnswerOntology = questionAnswerOntologies[0]
+
+            else:
+
+                questionAnswerOntology = Ontology(name = questionAnswerOntologyName)
+
+                questionAnswerOntology.save()
+
+            questionAnswerChoiceOntologyNameList = questionAnswerChoiceOntologies.split(" ")
+
+            questionAnswerChoiceOntologyList = []
+
+            for questionAnswerChoiceOntologyName in questionAnswerChoiceOntologyNameList:
+
+                questionAnswerChoiceOntologies = Ontology.objects.filter( name = questionAnswerChoiceOntologyName, ontologyType = ontologyTypeIndividual)
+
+                if len(questionAnswerChoiceOntologies) > 0:
+
+                    questionAnswerChoiceOntology = questionAnswerChoiceOntologies[0]
+
+                else:
+
+                    questionAnswerChoiceOntology = Ontology(name = questionAnswerChoiceOntologyName, ontologyType = ontologyTypeIndividual)
+
+                    questionAnswerChoiceOntology.save()
+
+                questionAnswerChoiceOntologyList.append(questionAnswerChoiceOntology)
+
+            parentQuestion = ''
+
+            if parentQuestionId != "":
+                
+                print (" @@@@@@@ parentQuestionId = " + str(parentQuestionId))
+
+                parentQuestions = Question.objects.filter(questionId = parentQuestionId)
+
+                if len(parentQuestions) > 0:
+
+                    parentQuestion = parentQuestions[0]
+
+                    #print (" --- for question --- " + str(question.text) + " !!!! parentQuestion !!!! " + str(parentQuestion) )
+
+            parentQuestionAnswer = ''
+
+            #print ( " ::::::::: parent answer id ::::::::::: " + str(parentQuestionAnswerId) )
+
+            if parentQuestionAnswerId != "" and parentQuestion != '' :
+
+                questionAnswers = parentQuestion.answers.all()
+
+                for questionAnswer in questionAnswers:
+
+                    #print ( " for questionAnswer = " + questionAnswer.text + " answer Id = " + str (questionAnswer.questionAnswerId) )
+
+                    if questionAnswer.questionAnswerId == int(parentQuestionAnswerId):
+
+                        parentQuestionAnswer = questionAnswer
+
+                #print (" ** parentQuestionAnswer ** " + str(parentQuestionAnswer) + " for question " + str(parentQuestion.text))
+
+                #if len(parentQuestionAnswers) > 0:
+
+                    #parentQuestionAnswerIds = [x.questionAnswerId in parentQuestionAnswers]
+
+                    #if parentQuestionAnswerId in parentQuestionAnswerIds:
+
+                        #parentQuestionAnswer = [x if x.questionAnswerId == parentQuestionAnswerId else '' for x in parentQuestionAnswers][0]
+
+            questions = Question.objects.filter( text = questionText, section = section)
+
+            question = ''
+
+            if len(questions) > 0:
+
+                question = questions[0]
+
+            else:
+
+                if parentQuestion != '':
+
+                    if parentQuestionAnswer == '':
+
+                        print ( "########## ERROR ########### " + questionText)
+                        errorFile.write(questionText + "--" + str(parentQuestion) + "\n")
+
+                    else:
+
+                        question = Question(text = questionText, questionId = int(questionId), ontologyIndividual = questionOntologyIndividual, section = section, parent = parentQuestion, parentAnswer = parentQuestionAnswer)
+
+                else:
+
+                    #print ( " IN ELSE **** ")
+
+                    question = Question(text = questionText, questionId = int(questionId) , ontologyClassSubClass = questionOntologyClassSubClass, ontologyIndividual = questionOntologyIndividual, section = section)
+
+                if question != '' :
+
+                    question.save()
+
+                else:
+
+                    print ( " !!!!!!!!!!!  Error DID NOT SAVE ####### ")
+
+            questionAnswers = QuestionAnswer.objects.filter(text = questionAnswerText, questionAnswerId = int(questionAnswerId))
+
+            #print ( " **** $$$$$$  for answer **** " + str(questionAnswerText) + " id = " + str(questionAnswerId) )
+
+            if len(questionAnswers) > 0:
+
+                questionAnswer = questionAnswers[0]
+
+                #print ( " ##### *** found answer **** " + str(questionAnswerText)  + " id = " + str(questionAnswerId))
+
+            else:
+
+                questionAnswer = QuestionAnswer(text = questionAnswerText, questionAnswerId = int(questionAnswerId) , questionAnswerOntology = questionAnswerOntology, questionAnswerRangeLower = questionAnswerRangeLower, questionAnswerRangeUpper = questionAnswerRangeUpper, requiredFlag = requiredFlag, phiFlag = phiFlag, pictureURL = pictureURL)
+
+                if questionAnswerTypeName != '':
+                    questionAnswer.questionAnswerType = questionAnswerType
+
+                if questionAnswerDataTypeName != '':
+                    questionAnswer.questionAnswerDataType = questionAnswerDataType
+
+                #print ( " !!!!!!! *** for answer **** " + str(questionAnswerText)  + " id = " + str(questionAnswerId))
+
+                questionAnswer.save()
+
+            question.answers.add(questionAnswer)
+
+            question.save()
+
+            questionAnswerChoiceNameList = questionAnswerChoices.split(" ")
+
+            for index, questionAnswerChoiceName in enumerate ( questionAnswerChoiceNameList ) :
+
+                if len(questionAnswerChoiceOntologyList) > index:
+
+                    questionAnswerChoice = QuestionAnswerChoice ( text = questionAnswerChoiceName, questionAnswer = questionAnswer, choiceOntology = questionAnswerChoiceOntologyList[index])
+
+                else:
+
+                    questionAnswerChoice = QuestionAnswerChoice ( text = questionAnswerChoiceName, questionAnswer = questionAnswer)
+
+                questionAnswerChoice.save()
+
+        allQuestionnaires = Questionnaire.objects.all()
+
+        errorFile.close()
+
+    except:
+
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/listQuestionnaires.html', {
+
+        "questionnaires":allQuestionnaires,
+
+        "messages": messages,
+
+    },  RequestContext(request))
+
+@login_required
+def listQuestionnaires(request):
+    questionnaires = Questionnaire.objects.all()
+
+    return render_to_response("smellSurvey/listQuestionnaires.html",{
+
+        "questionnaires": questionnaires,
+
+    }, RequestContext(request))
+
+@login_required
+def displayQuestionnaire(request):
+
+    ''' Display Questionnaire
+    Input: Request
+    Output QuestionnaireObj for display
+    '''
+
+    try:
+
+        questionnaireId = request.POST.get("questionnaireId",0)
+
+        questionnaire = Questionnaire.objects.get(pk=questionnaireId)
+
+        questionnaireObj = QuestionnaireObj()
+
+        questionnaireObj.questionnaire = questionnaire
+
+        sections = Section.objects.filter(questionnaire = questionnaire)
+
+        for section in sections:
+
+            sectionObj = SectionObj()
+
+            sectionObj.section = section
+
+            print ( " !!!!!!!########@@@@@@@ adding section " + str(section.name) )
+
+            questions = Question.objects.filter( section = section ).order_by("questionId")
+
+            for question in questions:
+                
+                print ( " **** adding question " + str(question.text) )                
+
+                questionObj = QuestionObj()
+
+                questionObj.question = question
+
+                for questionAnswer in question.answers.all():
+
+                    questionAnswerObj = QuestionAnswerObj()
+
+                    questionAnswerObj.questionAnswer = questionAnswer
+
+                    questionObj.questionAnswerObjList.append(questionAnswerObj)
+
+                sectionObj.questionObjList.append(questionObj)
+
+            questionnaireObj.sectionObjList.append(sectionObj)
+
+    except:
+
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response("smellSurvey/displayQuestionnaire.html", {
+        "questionnaireObj" : questionnaireObj,
+
+    }, RequestContext(request))
+
+@login_required
+def displayAdministration(request):
+
+    ''' Display Administration
+    Input: Request
+    Output AdministrationObj for display
+    '''
+
+    try:
+
+        prevQuestion = ''
+        prevQuestionAnswer = ''
+        prevQuestionAnswerText = ''
+        prevSection = ''
+
+        administrationId = request.POST.get('administrationId', 0)
+        administration = Administration.objects.get(pk=administrationId)
+
+        administrator = administration.administrator
+
+        site = administration.site
+        study = administration.upin.study
+
+        patient = administration.upin.patient
+        questionnaire = administration.questionnaire
+
+        upinId = administration.upin.upinId
+
+        questionId = request.POST.get('questionId', 0)
+
+        previewFlag = request.POST.get('previewFlag', 0)
+
+        question = ''
+
+        questionAnswers = []
+
+        sectionId = request.POST.get('sectionId', 0)
+
+        currentSection = 0
+
+        if sectionId != 0:
+
+            currentSection = Section.objects.get (pk = sectionId)
+
+        if questionId != 0:
+            question = Question.objects.get (pk = questionId)
+            questionAnswers = QuestionAnswer.objects.filter( question = question )
+
+            section = question.section
+
+        print (" ** question ** " + str(question) )
+
+        sections = Section.objects.filter(questionnaire = questionnaire).order_by("sequence")
+
+        #upinId = request.POST.get('upinId', 0)
+
+        #print (" ** section ** " + str(section) )
+
+        prevQuestionAnswer = ''
+        prevQuestionAnswerText = ''
+
+        isQuestionAnswered = False
+
+        questionAnswerId = 0
+
+        administrationObj = AdministrationObj()
+
+        administrationObj.administration = administration
+
+        questionnaire = administration.questionnaire
+
+        sections = Section.objects.filter(questionnaire = questionnaire)
+
+        for section in sections:
+
+            sectionObj = SectionObj()
+
+            sectionObj.section = section
+
+            print ( " adding section " + str(section.name) )
+
+            questions = Question.objects.filter( section = section ).order_by("questionId")
+
+            isSectionAnswered = False
+
+            for question in questions:
+
+                questionObj = QuestionObj()
+
+                questionObj.question = question
+
+                isAnswered = False
+
+                for questionAnswer in question.answers.all():
+
+                    questionAnswerObj = QuestionAnswerObj()
+
+                    questionAnswerObj.questionAnswer = questionAnswer
+
+                    questionAnswerInstances = QuestionAnswerInstance.objects.filter (administration = administration, question = question, answer = questionAnswer)
+
+                    if len ( questionAnswerInstances ) > 0:
+
+                        questionAnswerInstance = questionAnswerInstances[0]
+
+                        print (" &&&&  for question answer = " + str(questionAnswer) + " is answered ")
+
+                        questionAnswerObj.isAnswered = True
+                        questionAnswerObj.questionAnswerInstance = questionAnswerInstance
+
+                    #if not questionAnswerObj.isAnswered and question.parentQuestion and question.parentAnswer != '':
+
+                        #continue
+
+                        questionObj.questionAnswerObjList.append(questionAnswerObj)
+
+                        isAnswered = True
+
+                        isSectionAnswered = True
+
+                if isAnswered:
+
+                    sectionObj.questionObjList.append(questionObj)
+
+            if isSectionAnswered:
+
+                administrationObj.sectionObjList.append(sectionObj)
+
+    except:
+
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response("smellSurvey/displayAdministration.html", {
+        "administrationObj" : administrationObj,
+        "upinId": upinId,
+
+        "site" : site,
+        "study" : study,
+        "sections" : sections,
+        "patient" : patient,
+        "questionnaire" : questionnaire,
+
+        "administration" : administration,
+        "administrator" : administrator,
+
+        'prevQuestion' : prevQuestion,
+        'prevQuestionAnswer': prevQuestionAnswer,
+        'prevQuestionAnswerText':prevQuestionAnswerText,
+        'prevSection': prevSection,
+
+        'question': question,
+        'questionAnswers':questionAnswers,
+        'section':currentSection,
+        'previewFlag':previewFlag,
+
+    }, RequestContext(request))
+
+@login_required
+def listQuestions(request):
+
+    questions = Question.objects.all()
+
+    return render_to_response("smellSurvey/listQuestions.html", {
+
+        "questions" : questions,
+
+    },  RequestContext(request))
+
+@login_required
+def editQuestion(request):
+
+    questionId = request.POST.get("questionId",0 )
+
+    question = Question.objects.get(pk = questionId)
+
+    questionObj = QuestionObj()
+
+    questionObj.question = question
+
+    for questionAnswer in question.answers.all():
+
+        questionAnswerObj = QuestionAnswerObj()
+
+        questionAnswerObj.questionAnswer = questionAnswer
+
+        #print ( " type = " + str(questionAnswer.questionAnswerType.name) )
+
+        if questionAnswer.questionAnswerType.name != "Boolean" :
+
+            #print ( " ***** in if " )
+
+            questionAnswerObj.displayDisabledFlag = False
+
+        questionObj.questionAnswerObjList.append(questionAnswerObj)
+
+    parentQuestions = Question.objects.exclude(id = question.id)
+
+    ontologies = Ontology.objects.all()
+
+    parentQuestionAnswers = QuestionAnswer.objects.all()
+
+    return render_to_response("smellSurvey/editQuestion.html", {
+
+        "questionObj" : questionObj,
+
+        "parentQuestions" : parentQuestions,
+
+        "parentQuestionAnswers" : parentQuestionAnswers,
+
+        "ontologies" : ontologies,
+
+    },  RequestContext(request))
+
+@login_required
+def deleteQuestion(request):
+
+    questionId = request.POST.get("questionId",0 )
+
+    question = Question.objects.get(pk = questionId)
+
+    questionnaire = question.section.questionnaire
+
+    question.delete()
+
+    questionnaireObj = QuestionnaireObj()
+
+    questionnaireObj.questionnaire = questionnaire
+
+    sections = Section.objects.filter(questionnaire = questionnaire)
+
+    for section in sections:
+
+        sectionObj = SectionObj()
+
+        sectionObj.section = section
+
+        print ( " adding section " + str(section.name) )
+
+        questions = Question.objects.filter( section = section )
+
+        for question in questions:
+
+            questionObj = QuestionObj()
+
+            questionObj.question = question
+
+            for questionAnswer in question.answers.all():
+
+                questionAnswerObj = QuestionAnswerObj()
+
+                questionAnswerObj.questionAnswer = questionAnswer
+
+                questionObj.questionAnswerObjList.append(questionAnswerObj)
+
+            sectionObj.questionObjList.append(questionObj)
+
+        questionnaireObj.sectionObjList.append(sectionObj)
+
+    return render_to_response("smellSurvey/displayQuestionnaire.html", {
+
+        "questionnaireObj" : questionnaireObj,
+
+    },  RequestContext(request))
+
+@login_required
+def deleteQuestionAnswer(request):
+
+    questionAnswerId = request.POST.get("questionAnswerId",0 )
+
+    questionAnswer = QuestionAnswer.objects.get(pk = questionAnswerId)
+
+    questionId = request.POST.get("questionId",0 )
+
+    question = Question.objects.get(pk = questionId)
+
+    question.answers.remove(questionAnswer)
+
+    question.save()
+
+    questionObj = QuestionObj()
+
+    questionObj.question = question
+
+    for questionAnswer in question.answers.all():
+
+        questionAnswerObj = QuestionAnswerObj()
+
+        questionAnswerObj.questionAnswer = questionAnswer
+
+        #print ( " type = " + str(questionAnswer.questionAnswerType.name) )
+
+        if questionAnswer.questionAnswerType.name != "Boolean" :
+
+            #print ( " ***** in if " )
+
+            questionAnswerObj.displayDisabledFlag = False
+
+        questionObj.questionAnswerObjList.append(questionAnswerObj)
+
+    parentQuestions = Question.objects.exclude(id = question.id)
+
+    ontologies = Ontology.objects.all()
+
+    parentQuestionAnswers = QuestionAnswer.objects.all()
+
+    return render_to_response("smellSurvey/editQuestion.html", {
+
+        "questionObj" : questionObj,
+
+        "parentQuestions" : parentQuestions,
+
+        "parentQuestionAnswers" : parentQuestionAnswers,
+
+        "ontologies" : ontologies,
+
+    },  RequestContext(request))
+
+@login_required
+def deleteQuestionnaire(request):
+
+    questionnaireId = request.POST.get("questionnaireId",0 )
+
+    questionnaire = Questionnaire.objects.get(pk = questionnaireId)
+
+    sections = Section.objects.filter(questionnaire = questionnaire)
+
+    for section in sections:
+
+        questions = Question.objects.filter( section = section)
+
+        for question in questions:
+
+            question.delete()
+
+    questionnaire.delete()
+
+    questionnaires = Questionnaire.objects.all()
+
+    return render_to_response("smellSurvey/listQuestionnaires.html", {
+
+        "questionnaires" : questionnaires,
+
+    },  RequestContext(request))
+
+@login_required
+def submitEditQuestion(request):
+
+    questionId = request.POST.get("questionId",0 )
+
+    questionText = request.POST.get("questionText",0 )
+
+    parentQuestionId = request.POST.get("parentQuestionId",0 )
+
+    parentQuestionAnswerId = request.POST.get("parentQuestionAnswerId",0 )
+
+    ontologyId = request.POST.get("ontologyId",0 )
+
+    question = Question.objects.get(pk = questionId)
+
+    if parentQuestionId != 0 :
+
+        parentQuestion = Question.objects.get(pk = parentQuestionId)
+
+        question.parent = parentQuestion
+
+    if parentQuestionAnswerId != 0 :
+
+        parentAnswer = QuestionAnswer.objects.get(pk = parentQuestionAnswerId)
+
+        question.parentAnswer = parentAnswer
+
+    ontology = Ontology.objects.get(pk = ontologyId)
+
+    if ontologyId != 0 :
+
+        ontology = Ontology.objects.get(pk = ontologyId)
+
+        question.ontology = ontology
+
+    question.text = questionText
+
+    question.save()
+
+    for questionAnswer in question.answers.all():
+
+        questionAnswerText = request.POST.get("questionAnswer-" + str(questionAnswer.id),"")
+
+        if questionAnswerText!= "":
+
+            questionAnswer.text = questionAnswerText
+
+            questionAnswer.save()
+
+        questionAnswerOntologyId = request.POST.get("questionAnswerOntologyId-" + str(questionAnswer.id),0)
+
+        if questionAnswerOntologyId!= 0:
+
+            questionAnswerOntology = Ontology.objects.get( pk = questionAnswerOntologyId)
+
+            questionAnswer.answerOntology = questionAnswerOntology
+
+            questionAnswer.save()
+
+    questionnaire = question.section.questionnaire
+
+    questionnaireObj = QuestionnaireObj()
+
+    questionnaireObj.questionnaire = questionnaire
+
+    sections = Section.objects.filter(questionnaire = questionnaire)
+
+    for section in sections:
+
+        sectionObj = SectionObj()
+
+        sectionObj.section = section
+
+        print ( " adding section " + str(section.name) )
+
+        questions = Question.objects.filter( section = section )
+
+        for question in questions:
+
+            questionObj = QuestionObj()
+
+            questionObj.question = question
+
+            for questionAnswer in question.answers.all():
+
+                questionAnswerObj = QuestionAnswerObj()
+
+                questionAnswerObj.questionAnswer = questionAnswer
+
+                questionObj.questionAnswerObjList.append(questionAnswerObj)
+
+            sectionObj.questionObjList.append(questionObj)
+
+        questionnaireObj.sectionObjList.append(sectionObj)
+
+    return render_to_response("smellSurvey/displayQuestionnaire.html", {
+
+        "questionnaireObj" : questionnaireObj,
+
+        "questionObj" : questionObj,
+
+    },  RequestContext(request))
+
+@login_required
+def addRole(request):
+
+    selectedMenu = "UserManagement"
+
+    return render_to_response('smellSurvey/addRole.html', {
+
+        'selectedMenu': selectedMenu,
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def addSite(request):
+
+    selectedMenu = "UserManagement"
+
+    return render_to_response('smellSurvey/addSite.html', {
+
+        'selectedMenu': selectedMenu,
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def addStudy(request):
+
+    selectedMenu = "UserManagement"
+
+    questionnaires = Questionnaire.objects.all()
+
+    return render_to_response('smellSurvey/addStudy.html', {
+
+        'selectedMenu': selectedMenu,
+        'questionnaires': questionnaires,
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def addSuperUser(request):
+
+    selectedMenu = "UserManagement"
+
+    return render_to_response('smellSurvey/addSuperUser.html', {
+
+        'selectedMenu': selectedMenu,
+
+    },  RequestContext(request))
+
+@login_required
+def addAdministrator(request):
+
+    selectedMenu = "UserManagement"
+
+    try:
+
+        sites = Site.objects.all()
+        studies = Study.objects.all()
+        roles = Role.objects.all()
+
+    except:
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/addAdministrator.html', {
+
+        'selectedMenu': selectedMenu,
+        'sites': sites,
+        'studies': studies,
+        'roles': roles,
+
+    },  RequestContext(request))
+
+@login_required
+def addPatient(request):
+
+    selectedMenu = "UserManagement"
+
+    try:
+
+        studies = Study.objects.all()
+
+        sites = Site.objects.all()
+
+        administrators = Administrator.objects.all()
+
+    except:
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/addPatient.html', {
+
+        'selectedMenu': selectedMenu,
+        'studies': studies,
+        'sites': sites,
+        'administrators': administrators,
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def addQuestion(request):
+
+    selectedMenu = "Question"
+
+    try:
+
+        questionnaireId = request.POST.get("questionnaireId","0")
+
+        questionnaire = Questionnaire.objects.get ( pk = questionnaireId )
+
+        ontologies = Ontology.objects.all()
+        sections = Section.objects.filter(questionnaire = questionnaire)
+        parentQuestions = Question.objects.all()
+        parentQuestionAnswers = QuestionAnswer.objects.all()
+
+    except:
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/addQuestion.html', {
+
+        'selectedMenu': selectedMenu,
+        'sections' : sections,
+        'ontologies' : ontologies,
+        'parentQuestions' : parentQuestions,
+        'parentQuestionAnswers' : parentQuestionAnswers,
+        'questionnaire' : questionnaire,
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def addQuestionAnswer(request):
+
+    selectedMenu = "QuestionAnswer"
+
+    try:
+
+        ontologies = Ontology.objects.all()
+        questionAnswerTypes = QuestionAnswerType.objects.all()
+
+        questionId = request.POST.get("questionId",0 )
+
+        question = Question.objects.get(pk = questionId)
+
+    except:
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/addQuestionAnswer.html', {
+
+        'selectedMenu': selectedMenu,
+        'ontologies' : ontologies,
+        'questionAnswerTypes' : questionAnswerTypes,
+        'question' : question,
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def submitAddSite(request):
+
+    selectedMenu = "SiteList"
+
+    try:
+
+        siteName = request.POST.get('siteName', "0")
+
+        siteDescription = request.POST.get('siteDescription', "0")
+
+        sites = Site.objects.filter(name = siteName)
+
+        if len(sites) == 0:
+
+            site = Site(name = siteName, description = siteDescription)
+
+            site.save()
+
+    except:
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/confirmAddSite.html', {
+
+        'selectedMenu': selectedMenu,
+        'user':request.user
+
+        },  RequestContext(request))
+
+@login_required
+def submitAddRole(request):
+
+    selectedMenu = "RoleList"
+
+    try:
+
+        roleName = request.POST.get('roleName', "0")
+
+        roleDescription = request.POST.get('roleDescription', "0")
+
+        roleLevel = request.POST.get('roleLevel', "0")
+
+        print ("roleLevel = " + str(roleLevel))
+
+        isSuperUserFlag = False
+        isAdministratorFlag = False
+        isPatientFlag = False
+
+        if roleLevel == "1":
+            isSuperUserFlag = True
+
+        if roleLevel == "2":
+            isAdministratorFlag = True
+
+        if roleLevel == "3":
+            isPatientFlag = True
+
+        roles = Role.objects.filter(name = roleName)
+
+        if len(roles) == 0:
+
+            role = Role(name = roleName, description = roleDescription, isSuperUser = isSuperUserFlag, isAdministrator = isAdministratorFlag, isPatient = isPatientFlag )
+
+            role.save()
+
+    except:
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/confirmAddRole.html', {
+
+        'selectedMenu': selectedMenu,
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def submitAddStudy(request):
+
+    selectedMenu = "StudyList"
+
+    try:
+
+        studyName = request.POST.get('studyName', "0")
+
+        studyDescription = request.POST.get('studyDescription', "0")
+
+        studies = Study.objects.filter(name = studyName)
+
+        if len(studies) == 0:
+
+            study = Study(name = studyName, description = studyDescription)
+
+            questionnaireId = request.POST.get('questionnaireId', 0)
+
+            questionnaire = Questionnaire.objects.get ( pk = questionnaireId )
+
+            study.questionnaire = questionnaire
+
+            study.save()
+
+    except:
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/confirmAddStudy.html', {
+
+        'selectedMenu': selectedMenu,
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def submitAddSuperUser(request):
+
+    selectedMenu = "StudyList"
+
+    try:
+
+        #userId = request.POST.get('userId', "0")
+
+        superUserName = request.POST.get('superUserName', "0")
+        superUserEmail = request.POST.get('superUserEmail', "0")
+        superUserPassword = request.POST.get('superUserPassword', "0")
+
+        users = User.objects.filter(username = superUserName)
+
+        messages = []
+
+        if len(users) > 0:
+
+            messages.append ("Super User already exists.")
+            sites = Site.objects.all()
+            studies = Study.objects.all()
+            roles = Role.objects.all()
+
+            return render_to_response('smellSurvey/addsuperUser.html', {
+
+                'selectedMenu': selectedMenu,
+                'sites': sites,
+                'studies': studies,
+                'roles': roles,
+                'messages':messages,
+
+            },  RequestContext(request))
+
+        user = User.objects.create_superuser(username=superUserName,
+                                         email= superUserEmail,
+                                         password=superUserPassword)
+
+        role = Role.objects.filter(name = SUPER_USER_ROLE_NAME)[0]
+
+        superUser = SurveyUser(user = user, role = role)
+
+        superUser.save()
+
+    except:
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/confirmAddSuperUser.html', {
+
+        'selectedMenu': selectedMenu,
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def submitAddAdministrator(request):
+
+    selectedMenu = "StudyList"
+
+    try:
+
+        administratorName = request.POST.get('administratorName', "0")
+        administratorEmail = request.POST.get('administratorEmail', "0")
+        administratorPassword = request.POST.get('administratorPassword', "0")
+
+        users = User.objects.filter ( username = administratorName)
+
+        messages = []
+
+        if len(users) > 0:
+
+            messages.append ("Administrator already exists.")
+            sites = Site.objects.all()
+            studies = Study.objects.all()
+            roles = Role.objects.all()
+
+            return render_to_response('smellSurvey/addAdministrator.html', {
+
+                'selectedMenu': selectedMenu,
+                'sites': sites,
+                'studies': studies,
+                'roles': roles,
+                'messages':messages,
+
+            },  RequestContext(request))
+
+        studyIds = request.POST.get('studyId', "0")
+        siteIds = request.POST.get('siteId', "0")
+
+        user = User.objects.create_user(username=administratorName,
+                                         email= administratorEmail,
+                                         password=administratorPassword)
+
+        role = Role.objects.filter(name = ADMIN_ROLE_NAME)[0]
+
+        administrator = Administrator(user = user, role = role)
+
+        administrator.save()
+
+        for siteId in siteIds:
+            site = Site.objects.get ( pk = siteId )
+            administrator.allowedSites.add ( site )
+
+        for studyId in studyIds:
+            study = Study.objects.get ( pk = studyId )
+            administrator.allowedStudies.add ( study )
+
+    except:
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/confirmAddAdministrator.html', {
+
+        'selectedMenu': selectedMenu,
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def submitAddQuestion(request):
+
+    selectedMenu = "UserManagement"
+
+    try:
+
+        questionText =  request.POST.get('questionText', "")
+
+        questionId = request.POST.get('questionId', "0")
+
+        sectionId = request.POST.get('sectionId', 0)
+        section = Section.objects.get( pk = sectionId)
+
+        ontologyId = request.POST.get('ontologyId', "0")
+        ontology = Ontology.objects.get( pk = ontologyId)
+
+        parentQuestionId = request.POST.get('parentQuestionId', "0")
+        parentQuestion = Question.objects.get( pk = parentQuestionId)
+
+        parentQuestionAnswerId = request.POST.get('parentQuestionAnswerId', "0")
+        parentQuestionAnswer = QuestionAnswer.objects.get( pk = parentQuestionAnswerId)
+
+        question = Question()
+
+        question = Question(text = questionText, questionId = int(questionId), ontology = ontology, section = section, parent = parentQuestion, parentAnswer = parentQuestionAnswer)
+
+        question.save()
+
+        questionAnswerIdList =  request.POST.getlist('questionAnswerId')
+
+        for questionAnswerId in questionAnswerIdList :
+
+            questionAnswer = QuestionAnswer.objects.get(pk = questionAnswerId)
+
+            question.answers.add(questionAnswer)
+
+        questionnaireId = request.POST.get("questionnaireId",0)
+
+        questionnaire = Questionnaire.objects.get(pk=questionnaireId)
+
+        questionnaireObj = QuestionnaireObj()
+
+        questionnaireObj.questionnaire = questionnaire
+
+        sections = Section.objects.filter(questionnaire = questionnaire)
+
+        for section in sections:
+
+            sectionObj = SectionObj()
+
+            sectionObj.section = section
+
+            print ( " adding section " + str(section.name) )
+
+            questions = Question.objects.filter( section = section )
+
+            for question in questions:
+
+                questionObj = QuestionObj()
+
+                questionObj.question = question
+
+                for questionAnswer in question.answers.all():
+
+                    questionAnswerObj = QuestionAnswerObj()
+
+                    questionAnswerObj.questionAnswer = questionAnswer
+
+                    questionObj.questionAnswerObjList.append(questionAnswerObj)
+
+                sectionObj.questionObjList.append(questionObj)
+
+            questionnaireObj.sectionObjList.append(sectionObj)
+
+    except:
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/displayQuestionnaire.html', {
+
+        'selectedMenu': selectedMenu,
+        "questionnaireObj" : questionnaireObj,
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def submitAddQuestionAnswer(request):
+
+    selectedMenu = "UserManagement"
+
+    try:
+
+        questionAnswerText =  request.POST.get('questionAnswerText', "")
+
+        questionAnswerId = request.POST.get('questionAnswerId', "0")
+
+        questionAnswerTypeId = request.POST.get('questionAnswerTypeId', 0)
+
+        questionAnswerType = QuestionAnswerType.objects.get ( pk = questionAnswerTypeId )
+
+        ontologyId = request.POST.get('ontologyId', "0")
+        answerOntology = Ontology.objects.get( pk = ontologyId)
+
+        questionAnswer = QuestionAnswer(text = questionAnswerText, questionAnswerId = int(questionAnswerId) , questionAnswerType = questionAnswerType, answerOntology = answerOntology)
+
+        questionAnswer.save()
+
+        questionId = request.POST.get("questionId",0 )
+
+        question = Question.objects.get(pk = questionId)
+
+        question.answers.add(questionAnswer)
+
+        questionObj = QuestionObj()
+
+        questionObj.question = question
+
+        for questionAnswer in question.answers.all():
+
+            questionAnswerObj = QuestionAnswerObj()
+
+            questionAnswerObj.questionAnswer = questionAnswer
+
+            #print ( " type = " + str(questionAnswer.questionAnswerType.name) )
+
+            if questionAnswer.questionAnswerType.name != "Boolean" :
+
+                #print ( " ***** in if " )
+
+                questionAnswerObj.displayDisabledFlag = False
+
+            questionObj.questionAnswerObjList.append(questionAnswerObj)
+
+        parentQuestions = Question.objects.exclude(id = question.id)
+
+        ontologies = Ontology.objects.all()
+
+        parentQuestionAnswers = QuestionAnswer.objects.all()
+
+    except:
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/editQuestion.html', {
+
+        "questionObj" : questionObj,
+
+        "parentQuestions" : parentQuestions,
+
+        "parentQuestionAnswers" : parentQuestionAnswers,
+
+        "ontologies" : ontologies,
+
+    },  RequestContext(request))
+
+@login_required
+def submitAddPatient(request):
+
+    selectedMenu = "StudyList"
+
+    try:
+
+        patientName = request.POST.get('patientName', "")
+        patientEmail = request.POST.get('patientEmail', "")
+        patientPassword = request.POST.get('patientPassword', "")
+
+        users = User.objects.filter ( username = patientName)
+
+        messages = []
+
+        if len(users) > 0:
+
+            messages.append ("Patient already exists.")
+            sites = Site.objects.all()
+            studies = Study.objects.all()
+            roles = Role.objects.all()
+
+            return render_to_response('smellSurvey/addPatient.html', {
+
+                'selectedMenu': selectedMenu,
+                'sites': sites,
+                'studies': studies,
+                'roles': roles,
+                'messages':messages,
+
+            },  RequestContext(request))
+
+        studyIds = request.POST.getlist('studyId')
+
+        defaultStudyId = request.POST.get('defaultStudyId', 0)
+        defaultStudy = Study.objects.get ( pk = defaultStudyId )
+
+        defaultSiteId = request.POST.get('defaultSiteId', 0)
+        defaultSite = Site.objects.get ( pk = defaultSiteId )
+
+        defaultAdministratorId = request.POST.get('defaultAdministratorId', 0)
+        defaultAdministrator = Administrator.objects.get ( pk = defaultAdministratorId )
+
+        user = User.objects.create_user(username=patientName,
+                                         email= patientEmail,
+                                         password=patientPassword)
+
+        role = Role.objects.filter(name = PATIENT_ROLE_NAME)[0]
+
+        patient = Patient(user = user, role = role, defaultStudy = defaultStudy , defaultSite = defaultSite, defaultAdministrator = defaultAdministrator )
+
+        patient.save()
+
+        for studyId in studyIds:
+            study = Study.objects.get ( pk = studyId )
+            patient.studies.add ( study )
+
+    except:
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/confirmAddPatient.html', {
+
+        'selectedMenu': selectedMenu,
+        'patient': patient,
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def listStudies(request):
+
+    selectedMenu = "StudyList"
+    try:
+
+        studyList = Study.objects.all().order_by("name")
+
+    except:
+
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/studyList.html', {
+
+        'studyList': studyList,
+        'selectedMenu': selectedMenu,
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def listAdministrations(request):
+
+    selectedMenu = "AdministrationList"
+    try:
+
+        administrations = Administration.objects.all().order_by("-startTime")
+
+    except:
+
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/listAdministrations.html', {
+
+        'administrations': administrations,
+        'selectedMenu': selectedMenu,
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def listSites(request):
+
+    selectedMenu = "SiteList"
+    try:
+
+        siteList = Site.objects.all().order_by("name")
+
+    except:
+
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/siteList.html', {
+
+        'siteList': siteList,
+        'selectedMenu': selectedMenu,
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def listRoles(request):
+
+    selectedMenu = "RoleList"
+    try:
+
+        rolesList = Role.objects.all().order_by("name")
+
+    except:
+
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/listRoles.html', {
+
+        'rolesList': rolesList,
+        'selectedMenu': selectedMenu,
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def listAdministrators(request):
+
+    selectedMenu = "UserManagement"
+    try:
+
+        administrators = Administrator.objects.all()
+
+        administratorObjList = []
+
+        for administrator in administrators :
+
+            administratorObj = AdministratorObj()
+
+            #user = User.objects.filter ( username = Administrator.id )[0]
+
+            #AdministratorObj.email = user.email
+
+            administratorObj.administrator = administrator
+
+            #administrations = Administration.objects.filter ( Administrator = Administrator, instrument = batInstrument )
+
+            #AdministratorObj.administrations = administrations
+            #AdministratorObj.numAdministrations = len(administrations)
+
+            administratorObjList.append ( administratorObj )
+
+        #AdministratorObjList.sort(key=lambda x: x.Administrator.name)
+
+    except:
+
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/listAdministrators.html', {
+
+        'administratorObjList': administratorObjList,
+        'selectedMenu': selectedMenu,
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def listSuperUsers(request):
+
+    selectedMenu = "UserManagement"
+    try:
+
+        superUserRole = Role.objects.filter( name = SUPER_USER_ROLE_NAME ) [0]
+
+        superUsers = SurveyUser.objects.filter(role = superUserRole)
+
+    except:
+
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/listSuperUsers.html', {
+
+        'superUsers': superUsers,
+        'selectedMenu': selectedMenu,
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def listPatients(request):
+
+    selectedMenu = "PatientsList"
+    try:
+
+        patientsList = Patient.objects.all()
+    except:
+
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/listPatients.html', {
+
+        'patientsList': patientsList,
+        'selectedMenu': selectedMenu,
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def displayAdministratorDetailList(request):
+
+    selectedMenu = "UserManagement"
+
+    upinObjList = []
+    Administrator = ''
+
+    try:
+
+        batInstrument = Instrument.objects.filter ( title = ISTH_BAT_INSTRUMENT)
+        AdministratorId = request.POST.get('AdministratorId', "0")
+
+        Administrator = Administrator.objects.get(pk = AdministratorId)
+
+        upinObjList = []
+
+        administrations = Administration.objects.filter ( Administrator = Administrator , instrument = batInstrument)
+
+        fetchQuestionAnswerFlag = False
+
+        fetchContextsFlag = False
+
+        for administration in administrations:
+
+            upinObj = UPINObj()
+
+            upin = administration.upin
+
+            upinObj.upin = upin
+
+            upinObj.administration = administration
+
+            #print " upin = " + str (upin.id)
+
+            instrumentObj = calcScore(upin.id, fetchQuestionAnswerFlag, fetchContextsFlag)
+
+            upinObj.instrumentObj = instrumentObj
+
+            upinObj.score = sum( [ a.sectionScore for a in instrumentObj.sectionObjList ] )
+
+            upinObjList.append ( upinObj )
+
+        upinObjList.sort(key=lambda x: x.upin.id)
+
+    except:
+
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/AdministratorDetail.html', {
+
+        'upinObjList': upinObjList,
+        'Administrator': Administrator,
+        'selectedMenu': selectedMenu,
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def editStudy(request):
+
+    selectedMenu = "StudyList"
+
+    studyObj = StudyObj()
+
+    try:
+
+        studyId = request.POST.get('studyId', "0")
+
+        study = Study.objects.get ( pk = studyId )
+
+        studyObj.study = study
+
+        questionnaires = Questionnaire.objects.all()
+
+        #print " before "
+
+        for questionnaire in questionnaires:
+
+            #print " in adding " + str(questionnaire)
+
+            questionnaireObj = QuestionnaireObj()
+
+            questionnaireObj.questionnaire = questionnaire
+
+            if questionnaire in study.questionnaires.all():
+
+                questionnaireObj.selectedFlag = True
+
+            studyObj.questionnaireObjList.append (questionnaireObj)
+
+    except:
+
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/editStudy.html', {
+
+        'studyObj': studyObj,
+        'selectedMenu': selectedMenu,
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def editPatient(request):
+
+    selectedMenu = "patientList"
+
+    patientObj = PatientObj()
+
+    try:
+
+        patientId = request.POST.get('patientId', "0")
+
+        patient = Patient.objects.get ( pk = patientId )
+
+        patientObj.patient = patient
+
+        print ( " default admin = " + str ( patientObj.patient.defaultAdministrator.id  ))
+
+        studies = Study.objects.all()
+
+        sites = Site.objects.all()
+
+        administrators = Administrator.objects.all()
+
+        #print " before "
+
+        for study in studies:
+
+            #print " in adding " + str(study)
+
+            studyObj = StudyObj()
+
+            studyObj.study = study
+
+            if study in patient.studies.all():
+
+                studyObj.selectedFlag = True
+
+            patientObj.studyObjList.append (studyObj)
+
+    except:
+
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/editPatient.html', {
+
+        'patientObj': patientObj,
+        'selectedMenu': selectedMenu,
+        'studies':studies,
+        'sites':sites,
+        'administrators':administrators,
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def editRole(request):
+
+    selectedMenu = "RoleList"
+
+    try:
+
+        roleId = request.POST.get('RoleId', "0")
+
+        role = Role.objects.get ( pk = roleId )
+
+    except:
+
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/editRole.html', {
+
+        'Role': Role,
+        'selectedMenu': selectedMenu,
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def editSite(request):
+
+    selectedMenu = "SiteList"
+
+    try:
+
+        siteId = request.POST.get('siteId', "0")
+
+        site = Site.objects.get ( pk = siteId )
+
+    except:
+
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/editSite.html', {
+
+        'site': site,
+        'selectedMenu': selectedMenu,
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def editAdministrator(request):
+
+    selectedMenu = "UserManagement"
+
+    administratorObj = AdministratorObj()
+    try:
+
+        administratorId = request.POST.get('administratorId', "0")
+
+        administrator = Administrator.objects.get ( pk = administratorId)
+
+        administratorObj.administrator = administrator
+
+        #roleId = Administrator.role.id
+
+        allowedSites = administrator.allowedSites.all()
+        allowedSiteIds = [x.id for x in allowedSites]
+
+        allowedStudies = administrator.allowedStudies.all()
+        allowedStudyIds = [x.id for x in allowedStudies]
+
+        #roles = Role.objects.all()
+
+        #for role in roles:
+            #roleObj = UserRoleObj()
+            #if role.id == roleId:
+                #roleObj.isSelected = True
+            #roleObj.role = role
+            #AdministratorObj.roleObjList.append ( roleObj )
+
+        sites = Site.objects.all()
+
+        for site in sites:
+            siteObj = SiteObj()
+            if site.id in allowedSiteIds:
+                siteObj.isSelected = True
+            siteObj.site = site
+            administratorObj.siteObjList.append ( siteObj )
+
+        studies = Study.objects.all()
+
+        for study in studies:
+            studyObj = StudyObj()
+            if study.id in allowedStudyIds:
+                studyObj.isSelected = True
+            studyObj.study = study
+            administratorObj.studyObjList.append ( studyObj )
+
+        #user = User.objects.filter ( username = Administrator.id )[0]
+
+        #AdministratorObj.email = user.email
+
+    except:
+
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/editAdministrator.html', {
+
+        'administratorObj': administratorObj,
+        'selectedMenu': selectedMenu,
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def editSuperUser(request):
+
+    selectedMenu = "UserManagement"
+
+    try:
+
+        superUserId = request.POST.get('superUserId', "0")
+
+        superUser = SurveyUser.objects.get ( pk = superUserId)
+
+    except:
+
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/editSuperUser.html', {
+
+        'superUser': superUser,
+        'selectedMenu': selectedMenu,
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def submitEditStudy(request):
+
+    selectedMenu = "StudyList"
+
+    try:
+
+        studyId = request.POST.get('studyId', "0")
+
+        studyName = request.POST.get('studyName', "0")
+
+        studyDescription = request.POST.get('studyDescription', "0")
+
+        study = Study.objects.get ( pk = studyId)
+
+        study.name = studyName
+        study.description = studyDescription
+
+        questionnaireId = request.POST.get('questionnaireId', 0)
+
+        questionnaire = Questionnaire.objects.get ( pk = questionnaireId )
+
+        study.questionnaire = questionnaire
+        study.save()
+
+    except:
+
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/confirmEditStudy.html', {
+
+        'selectedMenu': selectedMenu,
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def submitEditPatient(request):
+
+    selectedMenu = "PatientList"
+
+    try:
+
+        patientId = request.POST.get('patientId', "0")
+
+        patientName = request.POST.get('patientName', "0")
+
+        patient = Patient.objects.get ( pk = patientId)
+
+        patient.name = patientName
+
+        studyIds = request.POST.getlist('studyId')
+
+        patientName = request.POST.get('patientName', "")
+        patientEmail = request.POST.get('patientEmail', "")
+        patientPassword= request.POST.get('patientPassword', "")
+
+        patient.user.username = patientName
+        patient.user.email = patientEmail
+        patient.user.password = patientPassword
+
+        patient.save()
+
+        prevstudies = patient.studies.all()
+        prevstudyIds = [x.id for x in prevstudies]
+
+        for prevstudyId in prevstudyIds:
+            study = Study.objects.get ( pk = prevstudyId )
+            patient.studies.remove ( study )
+
+        for studyId in studyIds:
+            study = Study.objects.get ( pk = int(studyId) )
+            patient.studies.add ( study )
+
+    except:
+
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/confirmEditPatient.html', {
+
+        'selectedMenu': selectedMenu,
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def submitEditSite(request):
+
+    selectedMenu = "SiteList"
+
+    try:
+
+        siteId = request.POST.get('siteId', "0")
+
+        siteName = request.POST.get('siteName', "0")
+
+        siteDescription = request.POST.get('siteDescription', "0")
+
+        site = Site.objects.get ( pk = siteId)
+
+        site.name = siteName
+        site.description = siteDescription
+
+        site.save()
+
+    except:
+
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/confirmEditSite.html', {
+
+        'selectedMenu': selectedMenu,
+        'user':request.user
+
+    },  RequestContext(request))
+
+
+@login_required
+def submitEditRole(request):
+
+    selectedMenu = "RoleList"
+
+    try:
+
+        roleId = request.POST.get('roleId', "0")
+
+        roleName = request.POST.get('roleName', "0")
+
+        roleDescription = request.POST.get('roleDescription', "0")
+
+        isSuperUser = request.POST.get('isSuperUser', "0")
+        isAdministrator = request.POST.get('isAdministrator', "0")
+        isPatient = request.POST.get('isPatient', "0")
+
+        role = Role.objects.get ( pk = RoleId)
+
+        role.name = roleName
+        role.description = roleDescription
+
+        role.isSuperUser = isSuperUser
+        role.isAdministrator = isAdministrator
+        role.isPatient = isPatient
+
+        role.save()
+
+    except:
+
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/confirmEditRole.html', {
+
+        'selectedMenu': selectedMenu,
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def submitEditSuperUser(request):
+
+    selectedMenu = "AdministratorList"
+
+    try:
+
+        superUserId = request.POST.get('superUserId', "0")
+        superUser = SurveyUser.objects.get ( pk = superUserId )
+
+        print ("  ** superUserId ** " + str(superUserId) )
+
+        superUserName = request.POST.get('superUserName', "")
+        superUserEmail = request.POST.get('superUserEmail', "")
+        superUserPassword= request.POST.get('superUserPassword', "")
+
+        superUser.user.username = superUserName
+        superUser.user.email = superUserEmail
+        superUser.user.password = superUserPassword
+
+        superUser.save()
+
+    except:
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/confirmEditSuperUser.html', {
+
+        'selectedMenu': selectedMenu,
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def submitEditAdministrator(request):
+
+    selectedMenu = "AdministratorList"
+
+    try:
+
+        administratorId = request.POST.get('administratorId', "0")
+
+        print ("  ** administratorId ** " + str(administratorId) )
+
+        siteIds = request.POST.getlist('siteId')
+        studyIds = request.POST.getlist('studyId')
+
+        administrator = Administrator.objects.get(pk = administratorId)
+
+        administratorName = request.POST.get('administratorName', "")
+        administratorEmail = request.POST.get('administratorEmail', "")
+        administratorPassword= request.POST.get('administratorPassword', "")
+
+        administrator.user.username = administratorName
+        administrator.user.email = administratorEmail
+        administrator.user.password = administratorPassword
+
+        administrator.save()
+
+        prevstudies = administrator.allowedStudies.all()
+        prevstudyIds = [x.id for x in prevstudies]
+
+        prevsites = administrator.allowedSites.all()
+        prevsiteIds = [x.id for x in prevsites]
+
+        prevstudys = administrator.allowedStudies.all()
+        prevstudyIds = [x.id for x in prevstudys]
+
+        for prevstudyId in prevstudyIds:
+            study = Study.objects.get ( pk = prevstudyId )
+            administrator.allowedStudies.remove ( study )
+
+        for studyId in studyIds:
+            study = Study.objects.get ( pk = int(studyId) )
+            administrator.allowedStudies.add ( study )
+
+        for prevsiteId in prevsiteIds:
+            site = Site.objects.get ( pk = prevsiteId )
+            administrator.allowedSites.remove ( site )
+
+        for siteId in siteIds:
+            site = Site.objects.get ( pk = int(siteId) )
+            administrator.allowedSites.add ( site )
+
+    except:
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/confirmEditAdministrator.html', {
+
+        'selectedMenu': selectedMenu,
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def selectSiteStudy(request):
+
+    selectedMenu = "AdministratorList"
+
+    administrations = []
+
+    try:
+
+        surveyUser = SurveyUser.objects.filter ( user = request.user)[0]
+
+        print ( " survey user = " + str(surveyUser.role) )
+
+        if surveyUser.role.isPatient:
+
+            patient = Patient.objects.filter(user = request.user)[0]
+
+            study = ''
+
+            selectedStudyId = request.GET.get('studyId', 0)
+
+            if selectedStudyId != 0:
+
+                study = Study.objects.get(pk = selectedStudyId)
+
+            else:
+
+                study = patient.defaultStudy
+
+            site = patient.defaultSite
+
+            study = patient.defaultStudy
+
+            administrator = patient.defaultAdministrator
+
+            questionnaire = study.questionnaire
+
+            upinId = request.POST.get('upinId', 0)
+
+            print ( " upind == " + str(upinId))
+
+            upins = UPIN.objects.filter(patient = patient, study = study)
+
+            administrations = Administration.objects.filter( upin__in = upins)
+
+            print ( " administrations = " + str(administrations))
+
+            return render_to_response('smellSurvey/administerQuestionnaireWelcome.html', {
+
+                'site' : site,
+                'study' : study,
+                'patient' : patient,
+                'questionnaire' : questionnaire,
+                'upinId' :upinId,
+                'administrator' : administrator,
+                'administrations': administrations,
+                'user':request.user
+
+            },  RequestContext(request))
+
+        elif surveyUser.role.isAdministrator:
+
+            administrator = Administrator.objects.filter ( user = surveyUser.user)[0]
+
+            administrations = Administration.objects.filter( administrator = administrator)
+
+            print (" *** administrator sites *** " + str(administrator.allowedSites.all))
+            print (" *** administrator studies *** " + str(administrator.allowedStudies.all))
+
+    except:
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/selectSiteStudy.html', {
+
+        'selectedMenu': selectedMenu,
+        'administrator' : administrator,
+        'administrations':administrations,
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def selectPatient(request):
+
+    selectedMenu = "AdministratorList"
+
+    try:
+
+        siteId = request.POST.get('siteId', 0)
+        site = Site.objects.get ( pk = siteId )
+
+        studyId = request.POST.get('studyId', 0)
+        study = Study.objects.get ( pk = studyId)
+
+        questionnaire = study.questionnaire
+
+        administratorId = request.POST.get('administratorId', 0)
+        administrator = Administrator.objects.get ( pk = administratorId)
+
+        studies = []
+        studies.append(study)
+
+        patients = Patient.objects.filter ( studies__in = studies)
+
+    except:
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/selectPatient.html', {
+
+        'selectedMenu': selectedMenu,
+
+        'site' : site,
+        'study' : study,
+
+        'questionnaire': questionnaire,
+
+        'administrator':administrator,
+
+        'patients' : patients,
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def administerQuestionnaire(request):
+
+    try:
+        siteId = request.POST.get('siteId', 0)
+        site = Site.objects.get ( pk = siteId )
+
+        surveyUser = ''
+
+        try:
+
+            surveyUser = SurveyUser.objects.filter ( user = request.user )[0]
+
+        except:
+
+            pass
+
+        studyId = request.POST.get('studyId', 0)
+        study = Study.objects.get ( pk = studyId)
+
+        administratorId = request.POST.get('administratorId', 0)
+        administrator = Administrator.objects.get ( pk = administratorId)
+
+        patientId = request.POST.get('patientId', 0)
+        patient = Patient.objects.get ( pk = patientId)
+
+        questionnaireId = request.POST.get('questionnaireId', 0)
+        questionnaire = Questionnaire.objects.get ( pk = questionnaireId)
+
+        upinId = request.POST.get('upinId', 0)
+
+        sectionId = request.POST.get('sectionId', 0)
+
+        administrationId = request.POST.get('administrationId', 0)
+
+        print ( " section id = " + str(sectionId) )
+
+        print ( " administrationId = " + str(administrationId) )
+
+        sections = Section.objects.filter ( questionnaire = questionnaire ).order_by("sequence")
+
+        section = ''
+
+        if sectionId != 0:
+
+            section = Section.objects.get ( pk = sectionId)
+
+        else:
+
+            section = sections[0]
+
+        upin = ''
+
+        administration = ''
+
+        if administrationId == 0 or administrationId == '':
+
+            upin = UPIN(upinId = upinId, patient = patient, study = study )
+
+            upin.save()
+
+            administration = Administration(upin = upin, questionnaire = questionnaire, site = site, administrator = administrator, startTime = datetime.datetime.now())
+
+            administration.save()
+
+        else:
+
+            administration = Administration.objects.get ( pk = administrationId )
+            upin = administration.upin
+
+        questions = Question.objects.filter(section = section)
+
+        question = questions[0]
+
+        questionObj = QuestionObj()
+
+        questionObj.question = question
+
+        for questionAnswer in question.answers.all():
+
+            questionAnswerObj = QuestionAnswerObj()
+
+            questionAnswerObj.questionAnswer = questionAnswer
+
+            questionAnswerInstances = QuestionAnswerInstance.objects.filter (administration = administration, question = question, answer = questionAnswer)
+
+            if len ( questionAnswerInstances ) > 0:
+
+                questionAnswerInstance = questionAnswerInstances[0]
+
+                questionAnswerObj.isAnswered = True
+                questionAnswerObj.questionAnswerInstance = questionAnswerInstance
+
+            questionAnswerChoiceList = QuestionAnswerChoice.objects.filter (questionAnswer = questionAnswer)
+
+            questionAnswerObj.questionAnswerChoiceList = questionAnswerChoiceList
+
+            questionObj.questionAnswerObjList.append (questionAnswerObj)
+
+    except:
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/administerQuestionnaire.html', {
+
+        'site' : site,
+        'study' : study,
+        'patient' : patient,
+        'questionnaire' : questionnaire,
+
+        'sections' : sections,
+
+        #'question' : question,
+        #'questionAnswers' : questionAnswers,
+        'section' : section,
+
+        'upinId':upinId,
+        'administrator' : administrator,
+        'administration' : administration,
+        'user':request.user,
+
+        'questionObj': questionObj,
+
+        'surveyUser':surveyUser,
+
+    },  RequestContext(request))
+
+def getPathToQuestion(question):
+    tmp_path =[]
+    path = []
+    tmp_depth = 0
+    depth=0
+    while not question.parent is None:
+        question = question.parent
+        depth +=1
+        tmp_path.append((depth,question))
+    for tmp_depth, question in tmp_path:
+        path.append(((range(0,(depth-tmp_depth+1))),question))
+    path.reverse()
+    return path
+
+def checkIfParentInPath(parentFlag, question, parentQuestion):  
+    
+    try:
+	
+	#print ( " *** &&&&&&  in checkIfParentInPath = " + str(question.questionId) + "::" + str(question) + " parent = " + str(parentQuestion.questionId) + "::" + str(parentQuestion) + " parent flag = " + str(parentFlag) ) 	
+	
+	if question.parent is None:
+
+	    return parentFlag
+	
+	if question.parent.questionId == parentQuestion.questionId:
+	    
+	    parentFlag = True
+	    
+	    return parentFlag
+	
+	else:
+	    
+	    question = question.parent
+	    
+	    return checkIfParentInPath(parentFlag, question, parentQuestion)
+	
+    except:
+	
+	traceback.print_exc(file=sys.stdout)
+	
+    return parentFlag
+
+def navigateSection(question, section):  
+    
+    try:
+        
+	#print ( " @@@@@@@@@@ in navigate questionnaire for question = " + str(question.questionId) + "::" + str(question) ) 
+        
+	questions = Question.objects.filter (questionId__gt = question.questionId, section = section).exclude(parent = question)
+
+	if len ( questions ) == 0:
+	    
+	    return ''
+
+	nextQuestion = questions[0]
+	
+	parentFlag = False
+	
+	parentFlag = checkIfParentInPath(parentFlag, nextQuestion, question)
+	
+	if not parentFlag:
+
+	    return nextQuestion
+	
+	else:
+	    
+	    return navigateSection(nextQuestion, section)	    
+			
+    except:
+        
+        traceback.print_exc(file=sys.stdout)
+
+    return nextQuestion    
+
+@login_required
+def submitAdministerQuestionnaire(request):
+
+    try:
+
+        siteId = request.POST.get('siteId', 0)
+        site = Site.objects.get ( pk = siteId )
+
+        surveyUser = ''
+
+        try:
+
+            surveyUser = SurveyUser.objects.filter ( user = request.user )[0]
+
+        except:
+
+            pass
+
+        studyId = request.POST.get('studyId', 0)
+        study = Study.objects.get ( pk = studyId)
+
+        administratorId = request.POST.get('administratorId', 0)
+        administrator = Administrator.objects.get ( pk = administratorId)
+
+        administrationId = request.POST.get('administrationId', 0)
+        administration = Administration.objects.get ( pk = administrationId)
+
+        patientId = request.POST.get('patientId', 0)
+        patient = Patient.objects.get ( pk = patientId)
+
+        questionnaireId = request.POST.get('questionnaireId', 0)
+        questionnaire = Questionnaire.objects.get ( pk = questionnaireId)
+
+        questionId = request.POST.get('questionId', 0)
+        question = Question.objects.get (pk = questionId)
+
+        print (" ** question ** " + str(question) )
+
+        sectionId = request.POST.get('sectionId', 0)
+
+        section = ''
+
+        if sectionId != 0:
+            section = Section.objects.get (pk = sectionId)
+
+        sections = Section.objects.filter(questionnaire = questionnaire).order_by("sequence")
+
+        allSections = Section.objects.filter(questionnaire = questionnaire).order_by("sequence")
+
+        upinId = request.POST.get('upinId', 0)
+
+        #print (" ** section ** " + str(section) )
+
+        questionAnswers = QuestionAnswer.objects.filter( question = question )
+
+        prevQuestionAnswer = ''
+        prevQuestionAnswerText = ''
+
+        isQuestionAnswered = False
+
+        questionAnswerId = 0
+
+        isBooleanQuestionAnswer = False
+
+        for questionAnswer in questionAnswers:
+
+            questionAnswerTypeName = ''
+
+            if questionAnswer.questionAnswerType:
+
+                questionAnswerTypeName = questionAnswer.questionAnswerType.name
+
+            #print ("  ######%%%%%%%%%%%% for question Answer  " + str( questionAnswer.text) + " type = " +  questionAnswerTypeName )
+
+            if questionAnswerTypeName == "single choice" and questionAnswerId != 0:
+
+                break
+
+            questionAnswerId = 0
+
+            if questionAnswerTypeName == "single choice":
+
+                isBooleanQuestionAnswer = True
+
+                questionAnswerId = request.POST.get('questionAnswer-' + str( question.id), 0 )
+
+            else:
+
+                questionAnswerId = request.POST.get('questionAnswer-' + str( questionAnswer.id), 0 )
+
+            answerText = request.POST.get('questionAnswerText-' + str( questionAnswerId) , '')
+            answerText2 = request.POST.get('questionAnswerText2-' + str( questionAnswerId) , '')
+
+            if questionAnswerId != 0:
+
+                #print ( " ((((( single choice )))) ++++ saving answer found question answer " + str(questionAnswerId) )
+
+                questionAnswer = QuestionAnswer.objects.get ( pk = questionAnswerId )
+
+                # delete any existing question answer responses, in case people come back to this.
+                QuestionAnswerInstance.objects.filter(administration = administration, question = question).delete()
+
+                questionAnswerInstance = QuestionAnswerInstance(administration = administration, question = question, answer = questionAnswer, answerText = answerText, answerText2 = answerText2, timeStamp = datetime.datetime.now())
+
+                questionAnswerInstance.save()
+
+                prevQuestionAnswer = questionAnswer
+
+                isQuestionAnswered = True
+
+        prevQuestion = question
+        prevSection = section
+
+        completedFlag = False
+
+        questionId = question.id
+
+        sectionSequence = section.sequence
+
+        #print ( " questionId !! = " + str(questionId ) + " ---*** " + str(questionAnswerId) + " ***--- " + " is question answered = " + str(isQuestionAnswered))
+
+        hasChildQuestions = False
+
+        # check if question and answer has a child question. Else, get the next question.
+
+        if isQuestionAnswered and isBooleanQuestionAnswer:
+
+            questionAnswer = QuestionAnswer.objects.get(pk = questionAnswerId)
+
+            childQuestions = Question.objects.filter ( parent = question, parentAnswer = questionAnswer )
+
+            print ( " %%%%%%% for parent question = " + str(question) + " the parent answer = " + str(questionAnswer) )
+
+            #childQuestion = ''
+
+            if len ( childQuestions ) > 0 :
+
+                hasChildQuestions = True
+
+                print (" ^^^^^^^^ found child question for question ::::: " + str(question.text))
+                question = childQuestions [0]
+
+                #if parentQuestion != '':
+                    #print ( " ____________ found parent question !! = " + str(question ))
+                    #question = parentQuestion
+
+                questionAnswers = QuestionAnswer.objects.filter(question = question)
+
+        # if question is not answered or it was answered but there were no child questions
+        if not hasChildQuestions:
+
+            # check if there are more questions in this section of which this is not the parent. Else get questions in the next section
+
+            print ( " question id = " + str(question.questionId) + " section = " + str(section.id ) + " question = " + str(question) )
+            print ( " parent question  = " + str(question) + " parent answer = " + str(questionAnswer ) )
+
+            questions = Question.objects.filter (questionId__gt = question.questionId, section = section).exclude(parent = question)
+
+            print ( " questions = " + str(questions) )
+
+	    nextQuestion = navigateSection (question, question.section)
+
+            #if question != '':
+            questionAnswers = QuestionAnswer.objects.filter(question = nextQuestion)
+
+            # if next section
+            if numQuestionsinSection == 0 or question == '': # move on to next section
+                print ( " moving onto next section !! = " )
+                #questionAnswer = QuestionAnswer.objects.filter (questionAnswerId__gt = questionAnswerId)
+                sections = Section.objects.filter (sequence__gt = sectionSequence).order_by("sequence")
+                if len(sections) > 0:
+                    section = sections[0]
+
+                    questions = Question.objects.filter(section = section)
+                    question = questions[0]
+                    questionAnswers = QuestionAnswer.objects.filter(question = question)
+
+                else:# if there are no more sections
+
+                    completedFlag = True
+
+                    print ( " completed flag = " + str(completedFlag))
+
+        if completedFlag:
+
+            prevQuestion = ''
+            prevQuestionAnswer = ''
+            prevQuestionAnswerText = ''
+            prevSection = ''
+
+            administrationId = request.POST.get('administrationId', 0)
+            administration = Administration.objects.get(pk=administrationId)
+
+            administrator = administration.administrator
+
+            site = administration.site
+            study = administration.upin.study
+
+            patient = administration.upin.patient
+            questionnaire = administration.questionnaire
+
+            upinId = administration.upin.upinId
+
+            questionId = request.POST.get('questionId', 0)
+
+            question = ''
+
+            questionAnswers = []
+
+            sectionId = request.POST.get('sectionId', 0)
+
+            currentSection = ''
+
+            #if sectionId != 0:
+
+                #currentSection = Section.objects.get (pk = sectionId)
+
+            #if questionId != 0:
+                #question = Question.objects.get (pk = questionId)
+                #questionAnswers = QuestionAnswer.objects.filter( question = question )
+
+                #section = question.section
+
+            print (" ** question ** " + str(question) )
+
+            #upinId = request.POST.get('upinId', 0)
+
+            #print (" ** section ** " + str(section) )
+
+            prevQuestionAnswer = ''
+            prevQuestionAnswerText = ''
+
+            isQuestionAnswered = False
+
+            questionAnswerId = 0
+
+            administrationObj = AdministrationObj()
+
+            administrationObj.administration = administration
+
+            questionnaire = administration.questionnaire
+
+            sections = Section.objects.filter(questionnaire = questionnaire).order_by("sequence")
+
+            currentSection = sections[0]
+
+            for section in sections:
+
+                sectionObj = SectionObj()
+
+                sectionObj.section = section
+
+                print ( " adding section " + str(section.name) )
+
+                questions = Question.objects.filter( section = section )
+
+                isSectionAnswered = False
+
+                for question in questions:
+
+                    questionObj = QuestionObj()
+
+                    questionObj.question = question
+
+                    isAnswered = False
+
+                    for questionAnswer in question.answers.all():
+
+                        questionAnswerObj = QuestionAnswerObj()
+
+                        questionAnswerObj.questionAnswer = questionAnswer
+
+                        questionAnswerInstances = QuestionAnswerInstance.objects.filter (administration = administration, question = question, answer = questionAnswer)
+
+                        if len ( questionAnswerInstances ) > 0:
+
+                            questionAnswerInstance = questionAnswerInstances[0]
+
+                            print (" &&&&  for question answer = " + str(questionAnswer) + " is answered ")
+
+                            questionAnswerObj.isAnswered = True
+                            questionAnswerObj.questionAnswerInstance = questionAnswerInstance
+
+                            isAnswered = True
+                            isSectionAnswered = True
+
+                        questionAnswerChoiceList = QuestionAnswerChoice.objects.filter (questionAnswer = questionAnswer)
+                        questionAnswerObj.questionAnswerChoiceList = questionAnswerChoiceList
+                        questionObj.questionAnswerObjList.append(questionAnswerObj)
+
+                    if isAnswered:
+
+                        sectionObj.questionObjList.append(questionObj)
+
+                if isSectionAnswered:
+
+                    administrationObj.sectionObjList.append(sectionObj)
+
+            return render_to_response("smellSurvey/displayAdministration.html", {
+
+                "previewFlag" : completedFlag,
+                "administrationObj" : administrationObj,
+                "upinId": upinId,
+
+                "surveyUser": surveyUser,
+
+                "site" : site,
+                "study" : study,
+                "sections" : sections,
+                "patient" : patient,
+                "questionnaire" : questionnaire,
+
+                "administration" : administration,
+                "administrator" : administrator,
+
+                'prevQuestion' : prevQuestion,
+                'prevQuestionAnswer': prevQuestionAnswer,
+                'prevQuestionAnswerText':prevQuestionAnswerText,
+                'prevSection': prevSection,
+
+                'question': question,
+                'questionAnswers':questionAnswers,
+                'section':currentSection,
+
+            }, RequestContext(request))
+
+        questionObj = QuestionObj()
+
+        questionObj.question = question
+
+        for questionAnswer in questionAnswers:
+
+            questionAnswerObj = QuestionAnswerObj()
+
+            questionAnswerObj.questionAnswer = questionAnswer
+
+            questionAnswerInstances = QuestionAnswerInstance.objects.filter (administration = administration, question = question, answer = questionAnswer)
+
+            if len ( questionAnswerInstances ) > 0:
+
+                questionAnswerInstance = questionAnswerInstances[0]
+
+                questionAnswerObj.isAnswered = True
+                questionAnswerObj.questionAnswerInstance = questionAnswerInstance
+
+            questionObj.questionAnswerObjList.append (questionAnswerObj)
+
+    except:
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/administerQuestionnaire.html', {
+
+        #'selectedMenu': selectedMenu,
+
+        'site' : site,
+        'study' : study,
+        'sections' : allSections,
+
+        #'allSections' : allSections,
+
+        'patient' : patient,
+        'questionnaire' : questionnaire,
+
+        'administration' : administration,
+        'administrator' : administrator,
+
+        'prevQuestion' : prevQuestion,
+        'prevQuestionAnswer': prevQuestionAnswer,
+        'prevQuestionAnswerText':prevQuestionAnswerText,
+        'prevSection': prevSection,
+
+        #'question': question,
+        #'questionAnswers':questionAnswers,
+
+        "questionObj" : questionObj,
+        'section':section,
+
+        'upinId':upinId,
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def completeAdministration(request):
+
+    try:
+
+        administrationId = request.POST.get('administrationId', 0)
+        administration = Administration.objects.get ( pk = administrationId)
+
+        administration.stopTime = datetime.datetime.now()
+        administration.save()
+
+    except:
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/confirmQuestionnaireCompletion.html', {
+
+        'user':request.user
+
+    },  RequestContext(request))
+
+def fetchQuestionAnswerText(request, questionAnswerId):
+
+    try:
+
+        siteId = request.POST.get('siteId', 0)
+        site = Site.objects.get ( pk = siteId )
+
+        studyId = request.POST.get('studyId', 0)
+        study = Study.objects.get ( pk = studyId)
+
+        administratorId = request.POST.get('administratorId', 0)
+        administrator = Administrator.objects.get ( pk = administratorId)
+
+        patientId = request.POST.get('patientId', 0)
+        patient = Patient.objects.get ( pk = patientId)
+
+        questionnaireId = request.POST.get('questionnaireId', 0)
+        questionnaire = Questionnaire.objects.get ( pk = questionnaireId)
+
+        upinId = request.POST.get('upinId', 0)
+
+        if upinId == 0:
+
+            notFound = True
+
+            while notFound:
+
+                upinId = randint(100001, 999999)
+
+                upinCount = UPIN.objects.filter(upinId = newUPINID).count()
+
+                if upinCount == 0:
+
+                    notFound = False
+
+        print ( " upin == " + str(upinId))
+
+    except:
+        traceback.print_exc(file=sys.stdout)
+
+    return answerText, answerText2
+
+@login_required
+def administerQuestionnaireWelcome(request):
+
+    try:
+
+        siteId = request.POST.get('siteId', 0)
+        site = Site.objects.get ( pk = siteId )
+
+        studyId = request.POST.get('studyId', 0)
+        study = Study.objects.get ( pk = studyId)
+
+        administratorId = request.POST.get('administratorId', 0)
+        administrator = Administrator.objects.get ( pk = administratorId)
+
+        patientId = request.POST.get('patientId', 0)
+        patient = Patient.objects.get ( pk = patientId)
+
+        questionnaireId = request.POST.get('questionnaireId', 0)
+        questionnaire = Questionnaire.objects.get ( pk = questionnaireId)
+
+        upinId = request.POST.get('upinId', 0)
+
+        if upinId == 0:
+
+            notFound = True
+
+            while notFound:
+
+                upinId = randint(100001, 999999)
+
+                upinCount = UPIN.objects.filter(upinId = newUPINID).count()
+
+                if upinCount == 0:
+
+                    notFound = False
+
+        print ( " upin == " + str(upinId))
+
+    except:
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/administerQuestionnaireWelcome.html', {
+
+        #'selectedMenu': selectedMenu,
+
+        'site' : site,
+        'study' : study,
+        'patient' : patient,
+        'questionnaire' : questionnaire,
+        'upinId': upinId,
+        'administrator' : administrator,
+
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def administerQuestionnaireBackground(request):
+
+    try:
+
+        siteId = request.POST.get('siteId', 0)
+        site = Site.objects.get ( pk = siteId )
+
+        studyId = request.POST.get('studyId', 0)
+        study = Study.objects.get ( pk = studyId)
+
+        administratorId = request.POST.get('administratorId', 0)
+        administrator = Administrator.objects.get ( pk = administratorId)
+
+        patientId = request.POST.get('patientId', 0)
+        patient = Patient.objects.get ( pk = patientId)
+
+        questionnaireId = request.POST.get('questionnaireId', 0)
+        questionnaire = Questionnaire.objects.get ( pk = questionnaireId)
+
+        upinId = request.POST.get('upinId', 0)
+
+    except:
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/administerQuestionnaireBackground.html', {
+
+        #'selectedMenu': selectedMenu,
+
+        'site' : site,
+        'study' : study,
+        'patient' : patient,
+        'questionnaire' : questionnaire,
+        'upinId': upinId,
+        'administrator' : administrator,
+
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def administerQuestionnaireFirst(request):
+
+    try:
+
+        siteId = request.POST.get('siteId', 0)
+        site = Site.objects.get ( pk = siteId )
+
+        studyId = request.POST.get('studyId', 0)
+        study = Study.objects.get ( pk = studyId)
+
+        administratorId = request.POST.get('administratorId', 0)
+        administrator = Administrator.objects.get ( pk = administratorId)
+
+        patientId = request.POST.get('patientId', 0)
+        patient = Patient.objects.get ( pk = patientId)
+
+        questionnaireId = request.POST.get('questionnaireId', 0)
+        questionnaire = Questionnaire.objects.get ( pk = questionnaireId)
+
+        upinId = request.POST.get('upinId', 0)
+
+    except:
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/administerQuestionnaireFirst.html', {
+
+        #'selectedMenu': selectedMenu,
+
+        'site' : site,
+        'study' : study,
+        'patient' : patient,
+        'questionnaire' : questionnaire,
+        'upinId': upinId,
+        'administrator' : administrator,
+
+        'user':request.user
+
+    },  RequestContext(request))
+@login_required
+def administerQuestionnaireSecond(request):
+
+    try:
+
+        siteId = request.POST.get('siteId', 0)
+        site = Site.objects.get ( pk = siteId )
+
+        studyId = request.POST.get('studyId', 0)
+        study = Study.objects.get ( pk = studyId)
+
+        administratorId = request.POST.get('administratorId', 0)
+        administrator = Administrator.objects.get ( pk = administratorId)
+
+        patientId = request.POST.get('patientId', 0)
+        patient = Patient.objects.get ( pk = patientId)
+
+        questionnaireId = request.POST.get('questionnaireId', 0)
+        questionnaire = Questionnaire.objects.get ( pk = questionnaireId)
+
+        upinId = request.POST.get('upinId', 0)
+
+    except:
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/administerQuestionnaireSecond.html', {
+
+        #'selectedMenu': selectedMenu,
+
+        'site' : site,
+        'study' : study,
+        'patient' : patient,
+        'questionnaire' : questionnaire,
+        'upinId': upinId,
+        'administrator' : administrator,
+
+        'user':request.user
+
+    },  RequestContext(request))
+@login_required
+def administerQuestionnaireThird(request):
+
+    try:
+
+        siteId = request.POST.get('siteId', 0)
+        site = Site.objects.get ( pk = siteId )
+
+        studyId = request.POST.get('studyId', 0)
+        study = Study.objects.get ( pk = studyId)
+
+        administratorId = request.POST.get('administratorId', 0)
+        administrator = Administrator.objects.get ( pk = administratorId)
+
+        patientId = request.POST.get('patientId', 0)
+        patient = Patient.objects.get ( pk = patientId)
+
+        questionnaireId = request.POST.get('questionnaireId', 0)
+        questionnaire = Questionnaire.objects.get ( pk = questionnaireId)
+
+        upinId = request.POST.get('upinId', 0)
+
+    except:
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/administerQuestionnaireThird.html', {
+
+        #'selectedMenu': selectedMenu,
+
+        'site' : site,
+        'study' : study,
+        'patient' : patient,
+        'questionnaire' : questionnaire,
+        'upinId': upinId,
+        'administrator' : administrator,
+
+        'user':request.user
+
+    },  RequestContext(request))
+
+#@login_required
+#def administerQuestionnaireFourth(request):
+
+    #try:
+
+        #siteId = request.POST.get('siteId', 0)
+        #site = Site.objects.get ( pk = siteId )
+
+        #studyId = request.POST.get('studyId', 0)
+        #study = Study.objects.get ( pk = studyId)
+
+        #administratorId = request.POST.get('administratorId', 0)
+        #administrator = Administrator.objects.get ( pk = administratorId)
+
+        #patientId = request.POST.get('patientId', 0)
+        #patient = Patient.objects.get ( pk = patientId)
+
+        #questionnaireId = request.POST.get('questionnaireId', 0)
+        #questionnaire = Questionnaire.objects.get ( pk = questionnaireId)
+
+    #except:
+        #traceback.print_exc(file=sys.stdout)
+
+    #return render_to_response('smellSurvey/administerQuestionnaireFourth.html', {
+
+        ##'selectedMenu': selectedMenu,
+
+        #'site' : site,
+        #'study' : study,
+        #'patient' : patient,
+        #'questionnaire' : questionnaire,
+
+        #'administrator' : administrator,
+
+        #'user':request.user
+
+    #},  RequestContext(request))
+
+@login_required
+def administerQuestionnaireLegal(request):
+
+    try:
+
+        siteId = request.POST.get('siteId', 0)
+        site = Site.objects.get ( pk = siteId )
+
+        studyId = request.POST.get('studyId', 0)
+        study = Study.objects.get ( pk = studyId)
+
+        administratorId = request.POST.get('administratorId', 0)
+        administrator = Administrator.objects.get ( pk = administratorId)
+
+        patientId = request.POST.get('patientId', 0)
+        patient = Patient.objects.get ( pk = patientId)
+
+        questionnaireId = request.POST.get('questionnaireId', 0)
+        questionnaire = Questionnaire.objects.get ( pk = questionnaireId)
+
+        upinId = request.POST.get('upinId', 0)
+
+    except:
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/administerQuestionnaireLegal.html', {
+
+        #'selectedMenu': selectedMenu,
+
+        'site' : site,
+        'study' : study,
+        'patient' : patient,
+        'questionnaire' : questionnaire,
+        'upinId': upinId,
+        'administrator' : administrator,
+
+        'user':request.user
+
+    },  RequestContext(request))
+@login_required
+def administerQuestionnaireConfirmStart(request):
+
+    try:
+
+        siteId = request.POST.get('siteId', 0)
+        site = Site.objects.get ( pk = siteId )
+
+        studyId = request.POST.get('studyId', 0)
+        study = Study.objects.get ( pk = studyId)
+
+        administratorId = request.POST.get('administratorId', 0)
+        administrator = Administrator.objects.get ( pk = administratorId)
+
+        patientId = request.POST.get('patientId', 0)
+        patient = Patient.objects.get ( pk = patientId)
+
+        questionnaireId = request.POST.get('questionnaireId', 0)
+        questionnaire = Questionnaire.objects.get ( pk = questionnaireId)
+
+        upinId = request.POST.get('upinId', 0)
+
+    except:
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/administerQuestionnaireConfirmStart.html', {
+
+        #'selectedMenu': selectedMenu,
+
+        'site' : site,
+        'study' : study,
+        'patient' : patient,
+        'questionnaire' : questionnaire,
+        'upinId': upinId,
+        'administrator' : administrator,
+
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def submitRestart(request):
+
+    ''' Display Administration
+    Input: Request
+    Output AdministrationObj for display
+    '''
+
+    try:
+
+        administrationId = request.POST.get("administrationId",0)
+
+        administration = Administration.objects.get(pk=administrationId)
+
+        QuestionAnswerInstance.objects.filter(administration = administration).delete()
+
+        siteId = request.POST.get('siteId', 0)
+        site = Site.objects.get ( pk = siteId )
+
+        studyId = request.POST.get('studyId', 0)
+        study = Study.objects.get ( pk = studyId)
+
+        administratorId = request.POST.get('administratorId', 0)
+        administrator = Administrator.objects.get ( pk = administratorId)
+
+        patientId = request.POST.get('patientId', 0)
+        patient = Patient.objects.get ( pk = patientId)
+
+        questionnaireId = request.POST.get('questionnaireId', 0)
+        questionnaire = Questionnaire.objects.get ( pk = questionnaireId)
+
+        upinId = request.POST.get('upinId', 0)
+        upin = UPIN.objects.get ( pk = upinId)
+
+        sectionId = request.POST.get('sectionId', 0)
+
+        sections = Section.objects.filter ( questionnaire = questionnaire ).order_by("sequence")
+
+        section = ''
+
+        if sectionId != 0:
+
+            section = Section.objects.get ( pk = sectionId)
+
+        else:
+
+            section = sections[0]
+
+        administration = Administration(upin = upin, questionnaire = questionnaire, site = site, administrator = administrator, startTime = datetime.datetime.now())
+
+        administration.save()
+
+        questions = Question.objects.filter(section = section)
+
+        question = questions[0]
+
+        questionAnswers = QuestionAnswer.objects.filter(question = question)
+
+    except:
+
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response('smellSurvey/administerQuestionnaire.html', {
+
+        'site' : site,
+        'study' : study,
+        'patient' : patient,
+        'questionnaire' : questionnaire,
+
+        'question' : question,
+        'questionAnswers' : questionAnswers,
+        'section' : section,
+
+        'upinId':upinId,
+        'administrator' : administrator,
+        'administration' : administration,
+        'user':request.user
+
+    },  RequestContext(request))
+
+@login_required
+def reloadUPIN(request):
+
+    ''' Display Administration
+    Input: Request
+    Output AdministrationObj for display
+    '''
+
+    try:
+
+        prevQuestion = ''
+        prevQuestionAnswer = ''
+        prevQuestionAnswerText =  ''
+        prevSection = ''
+
+        upinId = request.POST.get('existingUPINID', 0)
+
+        upins = UPIN.objects.filter ( upinId = upinId )
+
+        upin = 0
+
+        if len (upins) > 0:
+
+            upin = upins[0]
+
+        else:
+
+            messages.append("Invalid UPIN " + str(upinId) + ".")
+
+            return render_to_response("smellSurvey/landing.html", {
+                "messages" : messages,
+                "upinId": upinId,
+
+            }, RequestContext(request))
+
+        #administrationId = request.POST.get('administrationId', 0)
+        administration = Administration.objects.filter(upin = upin)[0]
+
+        administrator = administration.administrator
+
+        site = administration.site
+        study = administration.upin.study
+
+        patient = administration.upin.patient
+        questionnaire = administration.questionnaire
+
+        upinId = administration.upin.upinId
+
+        questionId = request.POST.get('questionId', 0)
+
+        previewFlag = False
+
+        question = ''
+
+        questionAnswers = []
+
+        section = Section.objects.all()[0]
+
+        sectionId = section.id
+
+        currentSection = 0
+
+        if sectionId != 0:
+
+            currentSection = Section.objects.get (pk = sectionId)
+
+        if questionId != 0:
+            question = Question.objects.get (pk = questionId)
+            questionAnswers = QuestionAnswer.objects.filter( question = question )
+
+            section = question.section
+
+        print (" ** question ** " + str(question) )
+
+        sections = Section.objects.filter(questionnaire = questionnaire).order_by("sequence")
+
+        #upinId = request.POST.get('upinId', 0)
+
+        #print (" ** section ** " + str(section) )
+
+        prevQuestionAnswer = ''
+        prevQuestionAnswerText = ''
+
+        isQuestionAnswered = False
+
+        questionAnswerId = 0
+
+        administrationObj = AdministrationObj()
+
+        administrationObj.administration = administration
+
+        questionnaire = administration.questionnaire
+
+        sections = Section.objects.filter(questionnaire = questionnaire)
+
+        for section in sections:
+
+            sectionObj = SectionObj()
+
+            sectionObj.section = section
+
+            print ( " adding section " + str(section.name) )
+
+            questions = Question.objects.filter( section = section )
+
+            isSectionAnswered = False
+
+            for question in questions:
+
+                questionObj = QuestionObj()
+
+                questionObj.question = question
+
+                isAnswered = False
+
+                for questionAnswer in question.answers.all():
+
+                    questionAnswerObj = QuestionAnswerObj()
+
+                    questionAnswerObj.questionAnswer = questionAnswer
+
+                    questionAnswerInstances = QuestionAnswerInstance.objects.filter (administration = administration, question = question, answer = questionAnswer)
+
+                    if len ( questionAnswerInstances ) > 0:
+
+                        questionAnswerInstance = questionAnswerInstances[0]
+
+                        print (" &&&&  for question answer = " + str(questionAnswer) + " is answered ")
+
+                        questionAnswerObj.isAnswered = True
+                        questionAnswerObj.questionAnswerInstance = questionAnswerInstance
+
+                    #if not questionAnswerObj.isAnswered and question.parentQuestion and question.parentAnswer != '':
+
+                        #continue
+
+                        questionObj.questionAnswerObjList.append(questionAnswerObj)
+
+                        isAnswered = True
+
+                        isSectionAnswered = True
+
+                if isAnswered:
+
+                    sectionObj.questionObjList.append(questionObj)
+
+            if isSectionAnswered:
+
+                administrationObj.sectionObjList.append(sectionObj)
+
+    except:
+
+        traceback.print_exc(file=sys.stdout)
+
+    return render_to_response("smellSurvey/displayAdministration.html", {
+        "administrationObj" : administrationObj,
+        "upinId": upinId,
+
+        "site" : site,
+        "study" : study,
+        "sections" : sections,
+        "patient" : patient,
+        "questionnaire" : questionnaire,
+
+        "administration" : administration,
+        "administrator" : administrator,
+
+        'prevQuestion' : prevQuestion,
+        'prevQuestionAnswer': prevQuestionAnswer,
+        'prevQuestionAnswerText':prevQuestionAnswerText,
+        'prevSection': prevSection,
+
+        'question': question,
+        'questionAnswers':questionAnswers,
+        'section':currentSection,
+        'previewFlag':previewFlag,
+
+    }, RequestContext(request))

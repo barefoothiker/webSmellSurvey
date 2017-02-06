@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block css %}
+<link rel="stylesheet" type="text/css" href="/static/css/default.css">
+
+{% endblock css%}
+{% block js %}
+
+<script type="text/javascript">
+ 
+ 
+</script>
+
+{% endblock js %}
+
+{% block content %}
+
+<form method = "post" id = "smellSurveyForm" name = "smellSurveyForm" action="/smellSurvey/">
+ 
+ {% csrf_token %} 
+ 
+<div class="row">  
+
+  <div class="col-lg-8"> 
+<p>
+{% if messages %}
+<ul class="messages">
+    {% for message in messages %}
+    <li>{{ message }}</li>
+    {% endfor %}
+</ul>
+{% endif %}
+</p>
+  
+    
+     <div class="jumbotron jumbotron-fluid" > 	
+	<!--<p>     -->
+	    <div class="container text-center" style="background-color:#D6D3D3;border-radius: 15px; ">	
+		    <h2>			
+		     An error occured. Please contact the administrator by sending a mail to info@smellSurvey.com.
+		    </h2>
+	    </div>
+	<!--</p>-->
+
+  </div>
+
+ </div>
+ 
+</form>
+{% endblock content %}

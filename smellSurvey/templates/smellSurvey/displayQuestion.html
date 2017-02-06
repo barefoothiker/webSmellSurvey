@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block css %}
+<!--<link rel="stylesheet" type="text/css" href="/static/css/default.css">-->
+<!-- <link rel="stylesheet" type="text/css" href="/static/css/nouislider.css"> -->
+<!-- div.demo { padding: 10px !important; }; -->
+{% endblock css%}
+{% block js %}
+
+<script type="text/javascript">
+  $(document).ready(function() {
+    $('#questionTable').DataTable();
+    $('#childTable').DataTable(); 
+    $('#parentTable').DataTable();
+  } );
+
+ /* function submitForm(obj){
+      objId = obj.id;
+
+      data = objId.split("-");
+
+      if (data.length > 0){
+
+         ontologyId = data[1];
+
+      }
+
+    $("#ontologyId").val(ontologyId);
+
+    $("#ontologyForm").submit();
+  }*/
+
+function displayQuestion(obj){
+  objId=obj.id;
+  
+  data=objId.split("-");
+  
+  if (data.length > 0){
+    
+    questionId=data[1];
+    
+  }
+  
+  $("#hiddenId").val(questionId);
+  
+  $("#ontologyForm").attr("action","/smellingDisorder/displayQuestion/");
+  
+  $("#ontologyForm").submit();
+  
+}
+
+function displayOntology(obj){
+objId=obj.id;
+
+data=objId.split("-");
+
+if(data.length > 0){
+  ontologyId=data[1];
+}
+
+$("#hiddenId").val(ontologyId);
+
+$("#ontologyForm").attr("action", "/smellingDisorder/displayOntology/");
+
+$("#ontologyForm").submit();
+
+}
+</script>
+
+{% endblock js %}
+
+{% block content %}
+
+<!-- /.row -->
+<form method = "post" id = "ontologyForm" name = "ontologyForm" action="/smellingDisorder/displayOntology/">
+ {% csrf_token %} 
+ <input type="hidden" value="" name="hiddenId" id ="hiddenId"/>
+<!-- /.row -->
+<div class="row">
+  <div class="col-lg-12">
+    <h1 class="page-header">Add question</h1>
+  </div>
+  <!-- /.col-lg-12 -->
+</div>
+
+  <div class="col-lg-12">
+   <div class="panel panel-default">
+      <div class="panel-heading" >
+	Add Question
+      </div>
+      <!-- /.panel-heading -->
+      <div class="panel-body" >
+	<p>
+	  <div class="form-group">
+		<label>Question text:</label>
+	      <input type="text" class="form-control" id = "questionText" name = "questionText" value = "{{questionObj.question.text}}" required/>
+	      <p class="help-block">Question Text.</p>
+	  </div>      
+	</p>
+
+	<p>
+	  <div class="form-group">
+		<label>Question text:</label>
+	      <input type="text" class="form-control" id = "questionText" name = "questionText" value = "{{questionObj.question.text}}" required/>
+	      <p class="help-block">Question Text.</p>
+	  </div>      
+	</p>
+
+        <!-- /.table-responsive -->
+      </div>
+      <!-- /.panel-body -->
+    </div>
+   
+
+  </div>
+  <!-- /.col-lg-12 -->
+ </div>
+ <!-- /.row -->
+  <!--<p class="text-center">
+
+    <button type="submit" class="btn btn-primary btn-lg" value = "0" name = "submitButton" id="submitButton-0" onclick ="javascript:submitDataFileHandlerForm(this);">Project List</button>&nbsp;&nbsp;&nbsp;
+  
+ </p> -->
+</form>
+{% endblock content %}

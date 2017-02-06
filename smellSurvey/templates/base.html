@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+    	{% load staticfiles %}
+    
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="description" content="">
+        <meta name="author" content="">
+        <link rel="shortcut icon" href="../../docs-assets/ico/favicon.png">
+        <title>Smell and Taste Assessment Tool</title>
+    
+        <!-- Bootstrap core CSS -->
+        <link href="{% static "css/bootstrap.css"  %}" rel="stylesheet">
+	<link href="{% static "css/jquery.dataTables.min.css"  %}" rel="stylesheet">	
+        <!-- Custom styles for this template -->
+        <link href="{% static "css/justified-nav.css"  %}" rel="stylesheet">
+	
+        <link href="{% static "css/common.css"  %}" rel="stylesheet" >
+
+	<link href="{% static "css/bokeh-0.11.1.min.css" %}" rel="stylesheet" type="text/css">
+	<link href="{% static "css/bokeh-widgets-0.11.1.min.css" %}" rel="stylesheet" type="text/css"> 
+
+	<link href="{% static "css/jquery-ui.min.css" %}" rel="stylesheet" type="text/css"> 
+	
+        <!-- Bootstrap core JavaScript -->
+
+        <script src="{% static "js/jquery.min.js"  %}" ></script>
+        <script src="{% static "js/jquery-ui.min.js"  %}" ></script>
+
+        <script src="{% static "js/d3.min.js"  %}" ></script>	
+        <script src="{% static "js/bootstrap.min.js"  %}" ></script>
+	<script src="{% static "js/jquery.dataTables.min.js"  %}" ></script>
+
+	<script src="{% static "js/bokeh-0.11.1.min.js" %}"></script>
+	<script src="{% static "js/bokeh-widgets-0.11.1.min.js" %}"></script>	
+	
+       {% block css %} 
+
+       {% endblock css %} 
+
+       {% block js %} 
+
+  {% endblock js %} 
+  
+  
+		  {% if  surveyUser.role.isPatient %} 	
+<style>
+
+#progressBarBase {
+  position: relative;
+  width: 100%;
+  height: 15px;
+  background-color: #ddd;
+}
+
+#progressBarTop {
+  position: absolute;
+  width: {{ percentageCompleteSection }}%;
+  height: 100%;
+  background-color: #4CAF50;
+}
+
+#progressBarLabel {
+  text-align: center;
+  line-height: 15px;
+  color: white;
+}
+
+#progressBarTotalBase {
+  position: relative;
+  width: 100%;
+  height: 15px;
+  background-color: #ddd;
+}
+
+#progressBarTotalTop {
+  position: absolute;
+  width: {{ percentageComplete }}%;
+  height: 100%;
+  background-color: #D63463;
+}
+
+#progressBarTotalLabel {
+  text-align: center;
+  line-height: 15px;
+  color: white;
+}
+
+
+
+</style>		  
+
+		  
+{% endif %}  
+
+<script>
+
+    var laptopOrBrowser = /iPhone|Android|Trident/.test(navigator.userAgent);   
+    
+    <!--alert(laptopOrBrowser);-->
+
+    if (laptopOrBrowser) {
+
+       $("#surveyHeaderTextDiv").css({"clear":"both"});  
+      
+       $("#footerRightImageDiv").css({"clear":"both"});         
+    
+    }
+
+</script>
+ 
+    </head>
+    <body>
+        <div class="container">
+            <div class="masthead">
+                <div class="row">
+                    <div class="col-lg-12" style="text-align:center;">
+                        <a href="/"></a>
+                    </div>
+                <!--</div>-->
+                <!--<div class="row">-->
+                    <!--<div class="col-lg-8" id = "surveyHeaderTextDiv" name = "surveyHeaderTextDiv">-->
+                        <!--<p id = "surveyTextTitleParaDiv" name = "surveyTextTitleParaDiv" style="margin-left:0px;margin-top:25px;font-weight:bold;font-size:24px;">Smell &amp; Taste Assessment Tool<p/></a>-->
+                    <!--</div>-->
+                </div>
+            </div>
+<br/>
+	    <nav class="navbar navbar-default">
+	      <div class="container-fluid">
+		<!--<div class="navbar-header">-->
+		  <!--<a class="navbar-brand" href="#">Smell Survey Analysis Project</a>-->
+		<!--</div>-->
+		<div>
+		  <ul class="nav navbar-nav">
+		  <!--change selected menu fields-->
+		  
+		  {% if user.is_authenticated and not surveyUser.role.isPatient %}
+		    
+		    <li {% if selectedMenu == "Home" %} class="active" {% endif %}><a href="/">Home</a></li>
+		    
+		    {% endif %}
+		    
+		    {% if surveyUser.role.isSuperuser  or user.is_superuser or surveyUser.role.isTester %}
+		    
+		    
+			<li {% if selectedMenu == "JobStatus" %} class="active" {% endif %}><a href="/smellSurvey/listQuestionnaires">Questionnaires</a></li>	
+
+			<li {% if selectedMenu == "JobStatus" %} class="active" {% endif %}><a href="/smellSurvey/listSites">Sites</a></li>	
+			
+			<li {% if selectedMenu == "JobStatus" %} class="active" {% endif %}><a href="/smellSurvey/listStudies">Studies</a></li>	
+			
+			<li {% if selectedMenu == "JobStatus" %} class="active" {% endif %}><a href="/smellSurvey/listPatients">Survey Links</a></li>	
+			
+			<li {% if selectedMenu == "JobStatus" %} class="active" {% endif %}><a href="/smellSurvey/listAdministrators">Investigators</a></li>	
+
+			<li {% if selectedMenu == "JobStatus" %} class="active" {% endif %}><a href="/smellSurvey/listSuperUsers">System Admins</a></li>	
+			
+			<li {% if selectedMenu == "JobStatus" %} class="active" {% endif %}><a href="/smellSurvey/listTesters">Testers</a></li>	
+
+			<li {% if selectedMenu == "JobStatus" %} class="active" {% endif %}><a href="/smellSurvey/listRoles">Roles</a></li>				
+
+			<li {% if selectedMenu == "JobStatus" %} class="active" {% endif %}><a href="/smellSurvey/listAdministrations">Past Surveys</a></li>		
+
+			<li {% if selectedMenu == "JobStatus" %} class="active" {% endif %}><a href="/smellSurvey/selectParameters">Data</a></li>	
+		    
+		    {% endif %}
+
+		    {% if surveyUser.role.isAdministrator %}
+		    
+			 <!--Studies   Instruments   UPIN   Sites Users   Roles   Data       Use instruments-->
+		    
+			<li {% if selectedMenu == "ListFiles" %} class="active" {% endif %}><a href="/smellSurvey/selectSiteStudy">Use Instrument</a></li>
+			
+			<li {% if selectedMenu == "JobStatus" %} class="active" {% endif %}><a href="/smellSurvey/listSites">Sites</a></li>	
+			
+			<li {% if selectedMenu == "JobStatus" %} class="active" {% endif %}><a href="/smellSurvey/listStudies">Studies</a></li>	
+			
+			<li {% if selectedMenu == "JobStatus" %} class="active" {% endif %}><a href="/smellSurvey/listPatients">Survey Links</a></li>	
+
+			<li {% if selectedMenu == "JobStatus" %} class="active" {% endif %}><a href="/smellSurvey/listAdministrations">Past Surveys</a></li>		
+
+			<li {% if selectedMenu == "JobStatus" %} class="active" {% endif %}><a href="/smellSurvey/selectParameters">Data</a></li>	
+		    
+		    {% endif %}
+		    
+	            {% if not user.is_authenticated and not surveyUser.role.isPatient %} 
+		    <li >
+		         <a href="/accounts/login">
+    			Login
+		      </a>
+		    </li>
+		    {% endif %}
+		  </ul>
+		  {% if user.is_authenticated %} 
+		
+		  {% if not surveyUser.role.isPatient %} 
+		  
+		    <div  style="text-align:right;">
+		    
+			{{user.username}}<br/>
+		         <a href="/accounts/logout">
+    			Logout
+		      </a>
+			
+		   </div>		  
+		  
+		  {% else %} 
+
+
+		  {% if section %} 	
+
+		    <!--<ul>		    -->
+			 <!--<!--Studies   Instruments   UPIN   Sites Users   Roles   Data       Use instruments-->
+		    
+			<!--<li>-->
+			
+
+   		    <div class="navbar-header" style="text-align:center;margin-left:20px;">
+
+			<h4>Section:&nbsp;<font color="green">{{section}}</font></h4>
+			
+		   </div>
+
+
+                  {% if showSectionPercentageFlag %}
+   		    <div class="navbar-header" style="text-align:center;margin-left:20px;">
+
+			<h4>% Complete Section:
+			      
+			    <div id="progressBarBase">
+			      <div id="progressBarTop">
+				<div id="progressBarLabel">{{ percentageCompleteSection }}%</div>
+			      </div>
+			    </div> 			
+			</h4>
+			
+		   </div>
+		   {% endif %}
+
+   		    <div class="navbar-header" style="text-align:center;margin-left:20px;">
+
+			<h4>% Complete Total:
+			      
+			    <div id="progressBarTotalBase">
+			      <div id="progressBarTotalTop">
+				<div id="progressBarTotalLabel">{{ percentageComplete }}%</div>
+			      </div>
+			    </div> 			
+			</h4>
+			
+		   </div>
+
+		   {% endif %}
+			
+			<!--</li>-->
+		    <!--</ul>-->
+		    
+		    {% endif %}			  
+
+		  
+		  {% endif %} 
+		</div>
+	      </div>
+	    </nav>
+
+	    {% block content %}
+	    {% endblock content %}	  
+            <!-- Site footer -->
+            <div class="footer" >
+
+			 
+
+          
+			
+                </div>
+		</div>
+            </div>
+        </div>
+        <!-- /container -->
+    </body>
+</html>

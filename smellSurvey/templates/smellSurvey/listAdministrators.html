@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block css %}
+<link rel="stylesheet" type="text/css" href="/static/css/default.css">
+<!-- <link rel="stylesheet" type="text/css" href="/static/css/nouislider.css"> -->
+<!-- div.demo { padding: 10px !important; }; -->
+{% endblock css%}
+{% block js %}
+
+<script type="text/javascript">
+
+  function submitAddAdministrator(obj){ 
+  
+      $("#administratorListForm").attr('action','/smellSurvey/addAdministrator/');     
+
+      $("#administratorListForm").submit();
+
+  } 
+
+  
+  function submitAdministratorLink(obj){ 
+  
+      objId = obj.id;
+    
+      data = objId.split("-");    
+
+      administratorId = data[1];
+    
+      $("#administratorId").val(administratorId);
+
+      $("#administratorListForm").attr('action','/smellSurvey/editAdministrator/');          
+
+      $("#administratorListForm").submit();
+
+  }
+
+  $(document).ready(function() {
+    $('#administratorDataTable').DataTable();
+
+  } );
+
+</script>
+
+{% endblock js %}
+
+{% block content %}
+
+<!-- /.row -->
+<div class="row">
+  <div class="col-lg-12">
+    <h1 class="page-header">Investigators</h1>
+  </div>
+  <!-- /.col-lg-12 -->
+</div>
+<!-- /.row -->
+<form method = "post" id = "administratorListForm" name = "administratorListForm" action="/smellSurvey/editAdministrator/">
+ {% csrf_token %} 
+ <input type="hidden" value="" name="administratorId" id ="administratorId"/>
+ <div class="row">
+  <div class="col-lg-12">
+    <div class="panel panel-primary">
+      <div class="panel-heading">
+        Select an investigator from the list of investigators
+      </div>
+      <!-- /.panel-heading -->
+      <div class="panel-body" >
+      {% if messages %}
+	<ul class="messages">
+        {% for message in messages %}
+          <li{% if message.tags %} class="{{ message.tags }}"{% endif %}><font color="red">{{ message }}</font></li>
+        {% endfor %}
+	</ul>
+      {% endif %}
+        <div class="table-responsive" >
+	  <table id="administratorDataTable" class="display" cellspacing="0" width="100%">	  	  
+	   <thead>
+	      <tr >
+		<th>Name</th>		
+		<th>Role</th>
+		<th>Allowed Sites</th>
+		<th>Allowed Studies</th>
+		<th>Num Administrations</th>
+              </tr>
+           </thead>
+           <tbody>
+           {% for administratorObj in administratorObjList %}
+             <tr>
+	       <td><a id = "administratorLink-{{administratorObj.administrator.id}}" href="#" onclick ="javascript:submitAdministratorLink(this);"> {{ administratorObj.administrator.user}} </a></td>
+	       <td>{{ administratorObj.administrator.role}}</td>
+	       <td>{% for site in administratorObj.administrator.allowedSites.all %}
+		     {{ site }}<br/>
+		    {% endfor %}
+		</td>
+	       <td>{% for study in administratorObj.administrator.allowedStudies.all %}
+		     {{ study }}<br/>
+		    {% endfor %}
+		</td>
+	       <td><a id = "administratorLink-{{administratorObj.administrator.id}}" href="#" onclick ="javascript:submitAdministratorDetailLink(this);">{{ administratorObj.numAdministrations}}</a></td>
+             </tr>
+           {% endfor %}
+           </tbody>
+          </table>
+        </div>
+        <!-- /.table-responsive -->
+      </div>
+      <!-- /.panel-body -->
+    </div>
+    <!-- /.panel -->
+  </div>
+  <!-- /.col-lg-12 -->
+ </div>
+ <!-- /.row -->
+{% if not surveyUser.role.isTester %}
+
+<div class="row">
+  <div class="col-lg-12">
+    <p class="text-center">
+      <button type="submit" class="btn btn-danger btn-lg" value = "1" name = "submitButton" id = "submitButton" onclick ="javascript:submitAddAdministrator(this);">Add Investigator</button>     
+    </p>
+  </div>
+  <!-- /.col-lg-12 -->
+ </div>
+{% endif %}
+</form>
+{% endblock content %}

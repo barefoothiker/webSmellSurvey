@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block css %}
+<!--<link rel="stylesheet" type="text/css" href="/static/css/default.css">-->
+<!-- <link rel="stylesheet" type="text/css" href="/static/css/nouislider.css"> -->
+<!-- div.demo { padding: 10px !important; }; -->
+{% endblock css%}
+{% block js %}
+
+<script type="text/javascript">
+  $(document).ready(function() {
+    $('#questionnaireTable').DataTable();
+
+  } );
+
+  function displayQuestionnaire(obj){
+      objId = obj.id;
+
+      data = objId.split("-");
+
+      if (data.length > 0){
+
+         questionnaireId = data[1];
+
+      }
+
+    $("#questionnaireId").val(questionnaireId);
+
+    $("#listQuestionnaireForm").submit();
+  }
+  
+  function deleteQuestionnaire(obj){
+      objId = obj.id;
+
+      data = objId.split("-");
+
+      if (data.length > 0){
+
+         questionnaireId = data[1];
+
+      }
+
+    $("#questionnaireId").val(questionnaireId);
+    
+    if(confirm('Please confirm if you would like to delete this questionnaire.')){
+
+      $("#listQuestionnaireForm").attr("action","/smellSurvey/deleteQuestionnaire/");
+  
+      $("#listQuestionnaireForm").submit();
+    }    
+
+  }
+
+  function submitUploadQuestionnaire(obj){
+
+      $("#listQuestionnaireForm").attr("action","/smellSurvey/uploadQuestionnaire/");
+  
+      $("#listQuestionnaireForm").submit();
+ 
+
+  }  
+  
+</script>
+
+{% endblock js %}
+
+{% block content %}
+
+<!-- /.row -->
+<div class="row">
+  <div class="col-lg-12">
+    <h1 class="page-header">Questionnaires</h1>
+  </div>
+  <!-- /.col-lg-12 -->
+</div>
+<!-- /.row -->
+<form action="/smellSurvey/displayQuestionnaire/" enctype="multipart/form-data" method="post" id = "listQuestionnaireForm"> 
+{% csrf_token %} 
+ <input type="hidden" value="" name="questionnaireId" id ="questionnaireId"/>
+  <div class="row">
+  <div class="col-lg-12">
+      {% if messages %}
+      <p color="red">
+	<ul>
+	 {% for message in messages %}
+	   <li>       
+	     <font color="red">{{message|safe}}</font>
+	   </li>   
+       {% endfor %}
+       </ul>
+      </p>
+      {% endif %}    
+    <div class="panel panel-primary">
+      <div class="panel-heading">
+        Questionnaire list
+      </div>
+      <!-- /.panel-heading -->
+      <div class="panel-body" >
+        <div class="table-responsive" >
+
+          <table id="questionnaireTable" class="display" cellspacing="0" width="100%">
+           <thead>
+              <tr >
+                <th>Name</a></th>
+                <th>Description</a></th>
+                <th>Details</a></th>		
+                <th>Delete</a></th>		                
+              </tr>
+           </thead>
+           <tbody>
+           
+           {% for questionnaire in questionnaires %}
+           
+             <tr>
+               <td> {{ questionnaire.name}} </td>
+               <td> {{ questionnaire.description}} </td>
+               <td><button type="button" class="btn btn-primary" id = "questionnaireDetailButton-{{questionnaire.id}}" name = "questionnaireDetailButton-{{questionnaire.id}}" onclick ="javascript:displayQuestionnaire(this);">Details </button></td>
+               <td><button type="button" class="btn btn-warning" id = "questionnaireDetailButton-{{questionnaire.id}}" name = "questionnaireDetailButton-{{questionnaire.id}}" onclick ="javascript:deleteQuestionnaire(this);">Delete </button></td>
+             </tr> 
+
+           {% endfor %}
+           </tbody>
+          </table>
+        </div>
+        <!-- /.table-responsive -->
+      </div>
+      <!-- /.panel-body -->
+    </div>
+
+  </div>
+  <!-- /.col-lg-12 -->
+ <!--</div>-->
+ <!-- /.row -->
+
+{% if not surveyUser.role.isTester %}
+
+<p class="text-center">
+
+   <button type="submit" class="btn btn-danger btn-lg" value = "0" name = "submitButton" id="submitButton" onclick="javascript:submitUploadQuestionnaire(this);"> Upload Questionnaire</button>&nbsp;&nbsp;&nbsp;
+
+ </p> 
+ {% endif %}
+</div>
+</form>
+{% endblock content %}

@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block css %}
+<link rel="stylesheet" type="text/css" href="/static/css/default.css">
+{% endblock css%}
+{% block js %}
+
+<script type="text/javascript">
+  
+ $(document).ready(function() {
+    
+
+  });
+  
+  function processCancel(obj){
+  
+      $("#editRoleForm").attr('action','/smellSurvey/displayRoleList/');          
+
+      $("#editRoleForm").submit();
+  
+  }
+
+</script>
+
+{% endblock js %}
+
+{% block content %}
+
+<form method = "post" id = "editRoleForm" name = "editRoleForm" action="/smellSurvey/submitEditRole/">
+ {% csrf_token %} 
+ <input type="hidden" name="roleId" id ="roleId" value = "{{role.id}}"/>
+
+ <div class="row">  
+  <!-- panel for roles -->  
+  <div class="col-lg-12">
+    <div class="panel panel-primary">
+      <div class="panel-heading">
+      	  <h4 class="panel-title">
+	    <a data-toggle="collapse" data-parent="#panels1" href="#editRolePanel">
+	      Edit Role. (Click to toggle this panel.)
+	    </a>
+	  </h4>  
+      </div>
+      <!-- /.panel-heading -->
+      <div class="panel-body">
+       <div id="editRolePanel" class="panel-collapse collapse in" >    
+
+      <div class="form-group">
+	<label>Name:</label>&nbsp;<input type = "text" id = "roleName" name = "roleName" value = "{{role.name}}" width = "200px;" required/>
+	<p class="help-block">Name of role. </p>
+      </div>  
+
+      <div class="form-group">
+	<label>Description:</label>&nbsp;<input type = "text" id = "roleDescription" name = "roleDescription" value = "{{role.description}}" width = "200px;" required/>
+	<p class="help-block">Description of role. </p>
+      </div>  
+
+      <div class="form-group">
+	  <label>Super User?:</label>
+	  <input type="checkbox" class="form-control" id = "isSuperUser" name = "isSuperUser" value="{{role.isSuperUser}}" required/>
+	  <p class="help-block">Super user will all admin rights.</p>
+      </div>  
+
+      <div class="form-group">
+	  <label>Administrator?:</label>
+	  <input type="checkbox" class="form-control" id = "isAdministrator" name = "isAdministrator" value="{{role.isAdministrator}}" required/>
+	  <p class="help-block">An administrator can administer patients.</p>
+      </div>  
+
+      <div class="form-group">
+	  <label>Patient?:</label>
+	  <input type="checkbox" class="form-control" id = "isPatient" name = "isPatient" value="{{role.isPatient}}" required/>
+	  <p class="help-block">Patient.</p>
+      </div>  
+      
+    </div>
+  </div>
+</div>
+{% if not surveyUser.role.isTester %}
+ <!-- /.row -->
+<div class="row">
+  <div class="col-lg-12">
+    <p class="text-center">
+      <button type="submit" class="btn btn-primary btn-lg" value = "0" name = "submitButton" id = "submitButton" onclick = "javascript:processCancel(this);">Cancel</button>&nbsp;&nbsp;&nbsp;
+      <button type="submit" class="btn btn-danger btn-lg" value = "1" name = "submitButton" id = "submitButton" >Update</button>     
+    </p>
+  </div>
+  <!-- /.col-lg-12 -->
+ </div>
+ <!-- /.row -->
+{% endif %}
+</form>
+{% endblock content %}

@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% block css %}
+<!--<link rel="stylesheet" type="text/css" href="/static/css/default.css">-->
+<!-- <link rel="stylesheet" type="text/css" href="/static/css/nouislider.css"> -->
+<!-- div.demo { padding: 10px !important; }; -->
+{% endblock css%}
+{% block js %}
+
+<script type="text/javascript">
+  $(document).ready(function() {
+    $('#questionTable').DataTable();
+    $('#childTable').DataTable(); 
+    $('#parentTable').DataTable();
+  } );
+
+ /* function submitForm(obj){
+      objId = obj.id;
+
+      data = objId.split("-");
+
+      if (data.length > 0){
+
+         ontologyId = data[1];
+
+      }
+
+    $("#ontologyId").val(ontologyId);
+
+    $("#ontologyForm").submit();
+  }*/
+
+function displayQuestion(obj){
+  objId=obj.id;
+  
+  data=objId.split("-");
+  
+  if (data.length > 0){
+    
+    questionId=data[1];
+    
+  }
+  
+  $("#hiddenId").val(questionId);
+  
+  $("#ontologyForm").attr("action","/smellingDisorder/displayQuestion/");
+  
+  $("#ontologyForm").submit();
+  
+}
+
+function displayOntology(obj){
+objId=obj.id;
+
+data=objId.split("-");
+
+if(data.length > 0){
+  ontologyId=data[1];
+}
+
+$("#hiddenId").val(ontologyId);
+
+$("#ontologyForm").attr("action", "/smellingDisorder/displayOntology/");
+
+$("#ontologyForm").submit();
+
+}
+</script>
+
+{% endblock js %}
+
+{% block content %}
+
+<!-- /.row -->
+<form method = "post" id = "ontologyForm" name = "ontologyForm" action="/smellingDisorder/displayOntology/">
+ {% csrf_token %} 
+ <input type="hidden" value="" name="hiddenId" id ="hiddenId"/>
+<!-- /.row -->
+<div class="row">
+  <div class="col-lg-12">
+    <h1 class="page-header">Ontology {{ontology.name}}</h1>
+  </div>
+  <!-- /.col-lg-12 -->
+</div>
+
+  <div class="row">
+  <div class="col-lg-12">
+   <div class="panel panel-default">
+      <div class="panel-heading" >
+	Description
+      </div>
+      <!-- /.panel-heading -->
+      <div class="panel-body" >
+	<div>
+	  <p>{{ ontology.description }}</p>
+	</div>
+      </div>  
+    <div class="panel panel-default">
+      <div class="panel-heading">
+        Questions
+      </div>
+      <!-- /.panel-heading -->
+      <div class="panel-body" >
+	<!--<div id="ontologyQuestionPanel" >-->
+	  <div class="table-responsive" >
+	    <table id="questionTable" class="display" cellspacing="0" width="100%">
+	     <thead>
+		<tr >
+		  <th>Name</a></th>
+		  <th>Questionnaire</a></th>
+		  <th>Details</a></th>
+		</tr>
+	     </thead>
+	     <tbody>
+	     {% for question in questions%}
+	       <tr>
+		<td>{{ question.question_text }} </a> </td>
+		<td>{{ question.questionnaire }}</a></td>
+		<td><button type="button" class="btn btn-primary" id = "questionDetailButton-{{question.id}}" name = "questionDetailButton-{{question.id}}" onclick ="javascript:displayQuestion(this);">Details </button></td>
+	       </tr>
+	     {% endfor %}
+	     </tbody>
+	    </table>
+        </div>
+        <!-- /.table-responsive -->
+      </div>
+      <!-- /.panel-body -->
+    </div>
+
+    <div class="panel panel-default">
+      <div class="panel-heading">
+	  Children
+	  <!--Related ontologies-->
+      </div>
+      <!-- /.panel-heading -->
+      <div class="panel-body" >
+	<!--<br>
+      	<button type="button" class="btn btn-primary" id= "parentDetailButton-{{ontology.parent.id}}" name ="parentDetailButton-{{ontology.parent.id}}" style=""onclick="javascript:displayOntology(this);">See Parent: {{ontology.parent.name}} </button>
+	<br><br>
+	<h3>Children:</h3> <br>-->
+	<!--<div id="ontologyQuestionPanel" >-->
+	  <div class="table-responsive" >
+	    <table id="childTable" class="display" cellspacing="0" width="100%">
+	     <thead>
+		<tr >
+		  <th>Name</a></th>
+		  <th>Description</a></th>
+		  <th>Details</a></th>
+		</tr>
+	     </thead>
+	     <tbody>
+	     {% for child in children%}
+	       <tr>
+		<td> {{ child.name }} </a> </td>
+		<td>{{ child.description }}</td>
+		<td><button type="button" class="btn btn-primary" id = "childDetailButton-{{child.id}}" name = "childDetailButton-{{child.id}}" onclick ="javascript:displayOntology(this);">Details </button></td>
+	       </tr>
+	     {% endfor %}
+	     </tbody>
+	    </table>
+        </div>
+        <!-- /.table-responsive -->
+      </div>
+      <!-- /.panel-body -->
+    </div>
+   
+
+  </div>
+  <!-- /.col-lg-12 -->
+ </div>
+ <!-- /.row -->
+  <!--<p class="text-center">
+
+    <button type="submit" class="btn btn-primary btn-lg" value = "0" name = "submitButton" id="submitButton-0" onclick ="javascript:submitDataFileHandlerForm(this);">Project List</button>&nbsp;&nbsp;&nbsp;
+  
+ </p> -->
+</form>
+{% endblock content %}

@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block css %}
+<!--<link rel="stylesheet" type="text/css" href="/static/css/default.css">-->
+<!-- <link rel="stylesheet" type="text/css" href="/static/css/nouislider.css"> -->
+<!-- div.demo { padding: 10px !important; }; -->
+{% endblock css%}
+{% block js %}
+
+<script type="text/javascript">
+
+  $(document).ready(function() {
+  
+    $('#dataTable').DataTable({paging:false});
+
+  } );
+
+</script>
+
+{% endblock js %}
+
+{% block content %}
+
+<!-- /.row -->
+<div class="row">
+  <div class="col-lg-12">
+    <h1 class="page-header">{{question.name}}</h1>
+  </div>
+  <!-- /.col-lg-12 -->
+</div>
+<!-- /.row -->
+<form method = "post" id = "dataForm" name = "dataForm" action="/rampgpcr/rampGpcrExpression/">
+ {% csrf_token %} 
+
+ <div class="row">
+  <div class="col-lg-12">
+   <div class="panel panel-default">
+      <div class="panel-heading" >
+	Notes
+      </div>
+      <!-- /.panel-heading -->
+      <div class="panel-body" >
+	<div>
+	    <p>{{ question.notes }}</p>
+	    </div>
+      </div>  
+    <div class="panel panel-primary">
+      <div class="panel-heading">
+	  <h4 class="panel-title">
+	        <a data-toggle="collapse" data-parent="#panels1" href="#expressionPlotPanel">
+		        Plot. (Click to toggle this panel.)
+			    </a>
+		  </h4>  
+      </div>
+      <!-- /.panel-heading -->
+      <div class="panel-body" >
+	<div id="expressionPlotPanel" class="panel-collapse collapse in" style="height:850px;overflow-y:auto;"  -webkit-scrollbar>
+
+	      <!--<img src = "/static/img/{{plotName}}" height="800px;" width="800px;"/>--> 
+	          <p>test</p>
+		      <!--change above line to fit question format-->
+		      </div>
+      </div>      
+    </div>
+   </div>
+</div>
+
+ <div class="row">
+  <div class="col-lg-12">
+    <div class="panel panel-primary">
+      <div class="panel-heading">
+	  <h4 class="panel-title">
+	        <a data-toggle="collapse" data-parent="#panels1" href="#dataPanel">
+		        Data. (Click to toggle this panel.)
+			    </a>
+		  </h4>  
+      </div>
+      <!-- /.panel-heading -->
+      <div class="panel-body" >
+	<div id="dataPanel" class="panel-collapse collapse in" style="height:500px;overflow-y:auto;"  -webkit-scrollbar>
+	    <table id="dataTable" class="display" cellspacing="0" width="100%">
+	         <thead>
+		         <tr >
+			          <td>Gene</td>
+				         {% for columnName in columnNames %}
+				  <th>{{columnName}}</th>
+				        {% endfor%}
+              </tr>
+           </thead>
+           <tbody>
+           {% for rowValues in valuesList%}
+             <tr>
+	       {% for rowValue in rowValues %}     
+               <td>{{ rowValue}}</td>
+	             {% endfor %}
+             </tr>
+           {% endfor %}
+           </tbody>
+          </table>
+	    </div>
+      </div>      
+    </div>
+   </div>
+</div>
+
+</form>
+{% endblock content %}
